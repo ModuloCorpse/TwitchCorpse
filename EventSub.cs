@@ -1,12 +1,10 @@
 ﻿using CorpseLib.Json;
 using CorpseLib.Network;
 using CorpseLib.Web;
-using CorpseLib.Web.OAuth;
-using TwitchCorpse;
 using CorpseLib.Web.Http;
-using CorpseLib;
+using CorpseLib.Web.OAuth;
 
-namespace StreamGlass.Twitch
+namespace TwitchCorpse
 {
     public class EventSub : WebSocketProtocol
     {
@@ -182,13 +180,9 @@ namespace StreamGlass.Twitch
             message.Set("transport", transportJson);
             URLRequest request = new(URI.Parse("https://api.twitch.tv/helix/eventsub/subscriptions"), Request.MethodType.POST, message.ToNetworkString());
             request.AddContentType(MIME.APPLICATION.JSON);
-            if (m_Token != null)
-            {
-                request.AddHeaderField("Authorization", string.Format("Bearer {0}", m_Token.AccessToken));
-                request.AddHeaderField("Client-Id", m_Token.ClientID);
-            }
-            Response? response = request.Send();
-            if (response != null && response.StatusCode == 202)
+            request.AddRefreshToken(m_Token);
+            Response response = request.Send();
+            if (response.StatusCode == 202)
             {
                 m_Subscriptions.Add(subscriptionName);
                 return true;

@@ -38,10 +38,7 @@ namespace TwitchCorpse
             m_PrivateKey = privateKey;
         }
 
-        public TwitchAuthenticator(string publicKey, string privateKey, int port) : this(publicKey, privateKey)
-        {
-            m_Port = port;
-        }
+        public TwitchAuthenticator(string publicKey, string privateKey, int port) : this(publicKey, privateKey) => m_Port = port;
 
         public RefreshToken? Authenticate(string browser = "")
         {
