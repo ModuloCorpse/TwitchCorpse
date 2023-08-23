@@ -28,6 +28,7 @@ namespace TwitchCorpse
             "whispers:read"
         };
 
+        private string m_PageContent = string.Empty;
         private readonly string m_PublicKey;
         private readonly string m_PrivateKey;
         private readonly int m_Port = 3000;
@@ -40,9 +41,12 @@ namespace TwitchCorpse
 
         public TwitchAuthenticator(string publicKey, string privateKey, int port) : this(publicKey, privateKey) => m_Port = port;
 
+        public void SetPageContent(string content) => m_PageContent = content;
+
         public RefreshToken? Authenticate(string browser = "")
         {
             Authenticator authenticator = new("id.twitch.tv", string.Empty, m_Port);
+            authenticator.SetPageContent(m_PageContent);
             OperationResult<RefreshToken> result = authenticator.AuthorizationCode(m_Scopes.ToArray(), m_PublicKey, m_PrivateKey, browser);
             if (result)
                 return result.Result;

@@ -11,12 +11,16 @@ namespace TwitchCorpse
         public void OnFollow(User user);
         public void OnGiftSub(User? user, int tier, int nbGift);
         public void OnSub(User user, int tier, bool isGift);
+        public void OnSharedGiftSub(User user, User recipient, int tier, int monthGifted, int monthStreak, Text message);
         public void OnSharedSub(User user, int tier, int monthTotal, int monthStreak, Text message);
         public void OnReward(User user, string reward, string input);
         public void OnRaided(User user, int nbViewer);
         public void OnRaiding(User user, int nbViewer);
         public void OnStreamStart();
         public void OnStreamStop();
+
+        public void OnMessageHeld(User user, string messageID, Text message);
+        public void OnHeldMessageTreated(string messageID);
 
         public void UnhandledEventSub(string message);
     }

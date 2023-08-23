@@ -1,4 +1,5 @@
 ﻿using CorpseLib.Json;
+using CorpseLib.Logging;
 using CorpseLib.Network;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
@@ -8,6 +9,10 @@ namespace TwitchCorpse
 {
     public class EventSub : WebSocketProtocol
     {
+        public static readonly Logger EVENTSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-EventSub.log") };
+        public static void StartLogging() => EVENTSUB.Start();
+        public static void StopLogging() => EVENTSUB.Stop();
+
         public class Metadata
         {
             private readonly string m_ID;
@@ -122,44 +127,36 @@ namespace TwitchCorpse
         private readonly ITwitchHandler? m_TwitchHandler;
         private readonly RefreshToken m_Token;
         private readonly HashSet<string> m_TreatedMessage = new();
-        private readonly HashSet<string> m_Subscriptions = new();
-        private string m_ChannelID = "";
+        private readonly string m_ChannelID = "";
 
-        public static EventSub NewConnection(RefreshToken token, ITwitchHandler twitchHandler)
+        public static EventSub NewConnection(string channelID, RefreshToken token, ITwitchHandler twitchHandler)
         {
-            EventSub protocol = new(token, twitchHandler);
-            TCPAsyncClient twitchIRCClient = new(protocol, URI.Parse("wss://irc-ws.chat.twitch.tv:443"));
-            twitchIRCClient.Start();
+            EventSub protocol = new(channelID, token, twitchHandler);
+            TCPAsyncClient twitchEventSubClient = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
+            twitchEventSubClient.Start();
             return protocol;
         }
 
-        public static EventSub NewConnection(RefreshToken token)
+        public static EventSub NewConnection(string channelID, RefreshToken token)
         {
-            EventSub protocol = new(token, null);
-            TCPAsyncClient twitchIRCClient = new(protocol, URI.Parse("wss://irc-ws.chat.twitch.tv:443"));
-            twitchIRCClient.Start();
+            EventSub protocol = new(channelID, token, null);
+            TCPAsyncClient twitchEventSubClient = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
+            twitchEventSubClient.Start();
             return protocol;
         }
 
-        public EventSub(RefreshToken token, ITwitchHandler? twitchHandler): base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
+        public EventSub(string channelID, RefreshToken token, ITwitchHandler? twitchHandler): base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
         {
             m_Token = token;
             m_TwitchHandler = twitchHandler;
-        }
-
-        public void Connect(string channelID)
-        {
             m_ChannelID = channelID;
-            if (m_Token != null)
-                SetExtension("Authorization", string.Format("Bearer {0}", m_Token!.AccessToken));
-            Connect();
         }
 
-        internal void Reconnect()
+        public new void Reconnect()
         {
             Disconnect();
             if (m_Token != null)
-                SetExtension("Authorization", string.Format("Bearer {0}", m_Token!.AccessToken));
+                SetExtension("Authorization", string.Format("Bearer {0}", m_Token.AccessToken));
             Connect();
         }
 
@@ -181,14 +178,19 @@ namespace TwitchCorpse
             URLRequest request = new(URI.Parse("https://api.twitch.tv/helix/eventsub/subscriptions"), Request.MethodType.POST, message.ToNetworkString());
             request.AddContentType(MIME.APPLICATION.JSON);
             request.AddRefreshToken(m_Token);
+            EVENTSUB.Log(string.Format("Sending: {0}", request.Request.ToString()));
             Response response = request.Send();
+            EVENTSUB.Log(string.Format("Received: {0}", response.ToString()));
             if (response.StatusCode == 202)
             {
-                m_Subscriptions.Add(subscriptionName);
+                EVENTSUB.Log(string.Format("<= Listening to {0}", subscriptionName));
                 return true;
             }
             else
+            {
+                EVENTSUB.Log(string.Format("<= Error when listening to {0}: {1}", subscriptionName, response.Body));
                 return false;
+            }
         }
 
         private void HandleWelcome(JObject payload)
@@ -312,6 +314,16 @@ namespace TwitchCorpse
             }
         }
 
+        protected override void OnWSOpen(Response message)
+        {
+            EVENTSUB.Log(string.Format("WS Open : {0}", message.ToString()));
+        }
+
+        protected override void OnWSClose(int status, string message)
+        {
+            EVENTSUB.Log(string.Format("WS Close ({0}) : {1}", status, message));
+        }
+
         protected override void OnWSMessage(string message)
         {
             if (string.IsNullOrEmpty(message))
@@ -335,6 +347,11 @@ namespace TwitchCorpse
                     }
                 }
             }
+        }
+
+        protected override void OnClientDisconnected()
+        {
+            EVENTSUB.Log("<= Disconnected");
         }
     }
 }

@@ -1,8 +1,8 @@
 ﻿using System.Text;
 
-namespace TwitchCorpse.IRC
+namespace TwitchCorpse
 {
-    public class Message
+    public class ChatMessage
     {
         public class Command
         {
@@ -188,7 +188,7 @@ namespace TwitchCorpse.IRC
         private readonly string m_Host;
         private readonly string m_Parameters;
 
-        public Message(string command, string channel = "", string parameters = "", Tags? tags = null)
+        public ChatMessage(string command, string channel = "", string parameters = "", Tags? tags = null)
         {
             m_Command = new(command, channel);
             m_Tags = tags;
@@ -197,7 +197,7 @@ namespace TwitchCorpse.IRC
             m_Parameters = parameters;
         }
 
-        internal Message(Command command, Tags? tags, string nick, string host, string parameters)
+        internal ChatMessage(Command command, Tags? tags, string nick, string host, string parameters)
         {
             m_Command = command;
             m_Tags = tags;
@@ -238,7 +238,7 @@ namespace TwitchCorpse.IRC
         public string Host => m_Host;
         public string Parameters => m_Parameters;
 
-        public List<SimpleEmote> Emotes => (m_Tags != null) ? m_Tags.OrderedEmotes : new();
+        public List<SimpleEmote> Emotes => m_Tags != null ? m_Tags.OrderedEmotes : new();
 
         public bool HaveTag(string tag)
         {
@@ -261,7 +261,7 @@ namespace TwitchCorpse.IRC
             return string.Empty;
         }
 
-        internal static Message? Parse(string message, API api)
+        internal static ChatMessage? Parse(string message, API api)
         {
             string rawTagsComponent = string.Empty;
             string rawSourceComponent = string.Empty;
@@ -295,7 +295,7 @@ namespace TwitchCorpse.IRC
             Command? command = commandParts[0] switch
             {
                 "PING" or "GLOBALUSERSTATE" or "RECONNECT" => new(commandParts[0]),
-                "CAP" => new(commandParts[0], isCapRequestEnabled: (commandParts[2] == "ACK")),
+                "CAP" => new(commandParts[0], isCapRequestEnabled: commandParts[2] == "ACK"),
                 "421" => new("UNSUPPORTED", commandParts[2]),
                 "001" => new("LOGGED"),
                 "353" => new("USERLIST"),
@@ -368,8 +368,8 @@ namespace TwitchCorpse.IRC
                 if (!string.IsNullOrWhiteSpace(rawSourceComponent))
                 {
                     string[] sourceParts = rawSourceComponent.Split('!');
-                    nick = (sourceParts.Length == 2) ? sourceParts[0] : string.Empty;
-                    host = (sourceParts.Length == 2) ? sourceParts[1] : sourceParts[0];
+                    nick = sourceParts.Length == 2 ? sourceParts[0] : string.Empty;
+                    host = sourceParts.Length == 2 ? sourceParts[1] : sourceParts[0];
                 }
                 return new(command, tags, nick, host, rawParametersComponent);
             }
