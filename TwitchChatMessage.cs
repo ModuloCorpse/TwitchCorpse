@@ -2,7 +2,7 @@
 
 namespace TwitchCorpse
 {
-    public class ChatMessage
+    public class TwitchChatMessage
     {
         public class Command
         {
@@ -188,7 +188,7 @@ namespace TwitchCorpse
         private readonly string m_Host;
         private readonly string m_Parameters;
 
-        public ChatMessage(string command, string channel = "", string parameters = "", Tags? tags = null)
+        public TwitchChatMessage(string command, string channel = "", string parameters = "", Tags? tags = null)
         {
             m_Command = new(command, channel);
             m_Tags = tags;
@@ -197,7 +197,7 @@ namespace TwitchCorpse
             m_Parameters = parameters;
         }
 
-        internal ChatMessage(Command command, Tags? tags, string nick, string host, string parameters)
+        internal TwitchChatMessage(Command command, Tags? tags, string nick, string host, string parameters)
         {
             m_Command = command;
             m_Tags = tags;
@@ -261,7 +261,7 @@ namespace TwitchCorpse
             return string.Empty;
         }
 
-        internal static ChatMessage? Parse(string message, API api)
+        internal static TwitchChatMessage? Parse(string message, TwitchAPI api)
         {
             string rawTagsComponent = string.Empty;
             string rawSourceComponent = string.Empty;

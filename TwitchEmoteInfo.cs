@@ -1,6 +1,6 @@
 ﻿namespace TwitchCorpse
 {
-    public class EmoteInfo
+    public class TwitchEmoteInfo
     {
         public enum FormatType
         {
@@ -15,7 +15,7 @@
         private readonly string m_EmoteType;
         private readonly FormatType m_Format;
 
-        public EmoteInfo(string id, string name, string emoteType, List<string> format, List<string> scale, List<string> themeMode)
+        public TwitchEmoteInfo(string id, string name, string emoteType, List<string> format, List<string> scale, List<string> themeMode)
         {
             m_ID = id;
             m_Name = name;

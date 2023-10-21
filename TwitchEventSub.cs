@@ -7,7 +7,7 @@ using CorpseLib.Web.OAuth;
 
 namespace TwitchCorpse
 {
-    public class EventSub : WebSocketProtocol
+    public class TwitchEventSub : WebSocketProtocol
     {
         public static readonly Logger EVENTSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-EventSub.log") };
         public static void StartLogging() => EVENTSUB.Start();
@@ -110,12 +110,12 @@ namespace TwitchCorpse
 
             public EventData(JObject data) { m_Data = data; }
 
-            public User? GetUser(string user = "")
+            public TwitchUser? GetUser(string user = "")
             {
                 if (m_Data.TryGet(string.Format("{0}user_id", user), out string? id) &&
                     m_Data.TryGet(string.Format("{0}user_login", user), out string? login) &&
                     m_Data.TryGet(string.Format("{0}user_name", user), out string? name))
-                    return new(id!, login!, name!, User.Type.NONE);
+                    return new(id!, login!, name!, TwitchUser.Type.NONE);
                 return null;
             }
 
@@ -125,27 +125,27 @@ namespace TwitchCorpse
         }
 
         private readonly ITwitchHandler? m_TwitchHandler;
-        private readonly RefreshToken m_Token;
+        private readonly Token m_Token;
         private readonly HashSet<string> m_TreatedMessage = new();
         private readonly string m_ChannelID = "";
 
-        public static EventSub NewConnection(string channelID, RefreshToken token, ITwitchHandler twitchHandler)
+        public static TwitchEventSub NewConnection(string channelID, Token token, ITwitchHandler twitchHandler)
         {
-            EventSub protocol = new(channelID, token, twitchHandler);
+            TwitchEventSub protocol = new(channelID, token, twitchHandler);
             TCPAsyncClient twitchEventSubClient = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
             twitchEventSubClient.Start();
             return protocol;
         }
 
-        public static EventSub NewConnection(string channelID, RefreshToken token)
+        public static TwitchEventSub NewConnection(string channelID, Token token)
         {
-            EventSub protocol = new(channelID, token, null);
+            TwitchEventSub protocol = new(channelID, token, null);
             TCPAsyncClient twitchEventSubClient = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
             twitchEventSubClient.Start();
             return protocol;
         }
 
-        public EventSub(string channelID, RefreshToken token, ITwitchHandler? twitchHandler): base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
+        public TwitchEventSub(string channelID, Token token, ITwitchHandler? twitchHandler): base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
         {
             m_Token = token;
             m_TwitchHandler = twitchHandler;
@@ -220,7 +220,7 @@ namespace TwitchCorpse
 
         private void HandleFollow(EventData data)
         {
-            User? follower = data.GetUser();
+            TwitchUser? follower = data.GetUser();
             if (follower != null)
                 m_TwitchHandler?.OnFollow(follower);
         }
@@ -228,7 +228,7 @@ namespace TwitchCorpse
         private void HandleSub(EventData data)
         {
             int followTier;
-            User? follower = data.GetUser();
+            TwitchUser? follower = data.GetUser();
             if (follower != null && data.TryGet("tier", out string? tier))
             {
                 bool isGift = data.GetOrDefault("is_gift", false);
@@ -248,7 +248,7 @@ namespace TwitchCorpse
             int followTier;
             if (data.TryGet("is_anonymous", out bool? isAnonymous))
             {
-                User? follower = data.GetUser();
+                TwitchUser? follower = data.GetUser();
                 if (((bool)isAnonymous! || follower != null) && data.TryGet("tier", out string? tier) && data.TryGet("total", out int? nbGift))
                 {
                     switch (tier!)
@@ -265,7 +265,7 @@ namespace TwitchCorpse
 
         private void HandleReward(EventData data)
         {
-            User? viewer = data.GetUser();
+            TwitchUser? viewer = data.GetUser();
             if (viewer != null && data.TryGet("reward", out JObject? rewardInfo))
             {
                 data.TryGet("user_input", out string? input);
@@ -276,8 +276,8 @@ namespace TwitchCorpse
 
         private void HandleRaid(EventData data, bool incomming)
         {
-            User? from = data.GetUser("from_broadcaster_");
-            User? to = data.GetUser("to_broadcaster_");
+            TwitchUser? from = data.GetUser("from_broadcaster_");
+            TwitchUser? to = data.GetUser("to_broadcaster_");
             if (from != null && to != null && data.TryGet("viewers", out int? viewers))
             {
                 if (incomming)

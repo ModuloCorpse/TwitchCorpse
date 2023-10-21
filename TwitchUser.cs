@@ -1,6 +1,6 @@
 ﻿namespace TwitchCorpse
 {
-    public class User
+    public class TwitchUser
     {
         public enum Type
         {
@@ -23,7 +23,7 @@
         public string DisplayName => m_DisplayName;
         public Type UserType => m_Type;
 
-        public User(string id, string name, string displayName, Type type)
+        public TwitchUser(string id, string name, string displayName, Type type)
         {
             m_ID = id;
             m_Name = name;
@@ -31,12 +31,8 @@
             m_Type = type;
         }
 
-        public User(string id, string name, Type type)
-        {
-            m_ID = id;
-            m_Name = name;
-            m_DisplayName = name;
-            m_Type = type;
-        }
+        public TwitchUser(string id, string name, Type type) : this(id, name, name, type) {}
+
+        public TwitchUser(string id, string name, string displayName) : this(id, name, displayName, Type.NONE) { }
     }
 }

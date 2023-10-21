@@ -5,11 +5,11 @@ using CorpseLib.Web;
 using CorpseLib.Web.Http;
 using CorpseLib.Web.OAuth;
 using System.Text.RegularExpressions;
-using static TwitchCorpse.ChatMessage;
+using static TwitchCorpse.TwitchChatMessage;
 
 namespace TwitchCorpse
 {
-    public class Chat : WebSocketProtocol
+    public class TwitchChat : WebSocketProtocol
     {
         public static readonly Logger TWITCH_IRC = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-TwitchIRC.log") };
         public static void StartLogging() => TWITCH_IRC.Start();
@@ -35,37 +35,37 @@ namespace TwitchCorpse
         };
 
         private readonly ITwitchHandler? m_TwitchHandler;
-        private readonly API m_API;
-        private readonly User? m_SelfUserInfo = null;
+        private readonly TwitchAPI m_API;
+        private readonly TwitchUser? m_SelfUserInfo = null;
         private readonly RefreshToken? m_AccessToken = null;
         private readonly string m_Channel;
         private readonly string m_UserName = string.Empty;
         private string m_ChatColor = string.Empty;
 
-        public static Chat NewConnection(API api, string channel, string username, RefreshToken token, ITwitchHandler twitchHandler)
+        public static TwitchChat NewConnection(TwitchAPI api, string channel, string username, RefreshToken token, ITwitchHandler twitchHandler)
         {
-            Chat protocol = new(api, channel, username, token, twitchHandler);
+            TwitchChat protocol = new(api, channel, username, token, twitchHandler);
             TCPAsyncClient twitchIRCClient = new(protocol, URI.Parse("wss://irc-ws.chat.twitch.tv:443"));
             twitchIRCClient.Start();
             return protocol;
         }
 
-        public static Chat NewConnection(API api, string channel, string username, RefreshToken token)
+        public static TwitchChat NewConnection(TwitchAPI api, string channel, string username, RefreshToken token)
         {
-            Chat protocol = new(api, channel, username, token, null);
+            TwitchChat protocol = new(api, channel, username, token, null);
             TCPAsyncClient twitchIRCClient = new(protocol, URI.Parse("wss://irc-ws.chat.twitch.tv:443"));
             twitchIRCClient.Start();
             return protocol;
         }
 
-        private static Text Convert(API api, string message, List<SimpleEmote> emoteList)
+        private static Text Convert(TwitchAPI api, string message, List<SimpleEmote> emoteList)
         {
             Text ret = new();
             int lastIndex = 0;
             foreach (SimpleEmote emote in emoteList)
             {
                 ret.AddText(message[lastIndex..emote.Start]);
-                EmoteInfo? emoteInfo = api.GetEmoteFromID(emote.ID);
+                TwitchEmoteInfo? emoteInfo = api.GetEmoteFromID(emote.ID);
                 if (emoteInfo != null)
                     ret.AddImage(api.GetEmoteURL(emote.ID, false, 3, false));
                 lastIndex = emote.End + 1;
@@ -75,7 +75,7 @@ namespace TwitchCorpse
             return ret;
         }
 
-        private Chat(API api, string channel, string username, RefreshToken token, ITwitchHandler? twitchHandler)
+        private TwitchChat(TwitchAPI api, string channel, string username, RefreshToken token, ITwitchHandler? twitchHandler)
         {
             m_API = api;
             m_Channel = channel;
@@ -90,9 +90,9 @@ namespace TwitchCorpse
         {
             if (m_AccessToken == null)
                 return;
-            SendMessage(new ChatMessage("CAP REQ", parameters: "twitch.tv/membership twitch.tv/tags twitch.tv/commands"));
-            SendMessage(new ChatMessage("PASS", channel: string.Format("oauth:{0}", m_AccessToken.AccessToken)));
-            SendMessage(new ChatMessage("NICK", channel: m_SelfUserInfo != null ? m_SelfUserInfo.DisplayName : m_UserName));
+            SendMessage(new TwitchChatMessage("CAP REQ", parameters: "twitch.tv/membership twitch.tv/tags twitch.tv/commands"));
+            SendMessage(new TwitchChatMessage("PASS", channel: string.Format("oauth:{0}", m_AccessToken.AccessToken)));
+            SendMessage(new TwitchChatMessage("NICK", channel: m_SelfUserInfo != null ? m_SelfUserInfo.DisplayName : m_UserName));
         }
 
         private static string GetUserMessageColor(string username, string color)
@@ -108,7 +108,7 @@ namespace TwitchCorpse
             return color;
         }
 
-        private void CreateUserMessage(ChatMessage message, bool highlight, bool self)
+        private void CreateUserMessage(TwitchChatMessage message, bool highlight, bool self)
         {
             string displayName;
             if (self)
@@ -121,8 +121,8 @@ namespace TwitchCorpse
             else
                 displayName = message.GetTag("display-name");
             string userID = message.GetTag("user-id");
-            User.Type userType = m_API.GetUserType(self, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
-            User user = new(userID, message.Nick, displayName, userType);
+            TwitchUser.Type userType = m_API.GetUserType(self, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
+            TwitchUser user = new(userID, message.Nick, displayName, userType);
             Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes);
             m_TwitchHandler?.OnChatMessage(user, highlight, message.GetTag("id"),
                 GetUserMessageColor(displayName, self ? m_ChatColor : message.GetTag("color")), displayableMessage);
@@ -133,7 +133,7 @@ namespace TwitchCorpse
             }
         }
 
-        private void TreatUserNotice(ChatMessage message)
+        private void TreatUserNotice(TwitchChatMessage message)
         {
             CreateUserMessage(message, true, false);
             if (message.HaveTag("msg-id"))
@@ -158,8 +158,8 @@ namespace TwitchCorpse
                             default: return;
                         }
                         string userID = message.GetTag("user-id");
-                        User.Type userType = m_API.GetUserType(false, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
-                        User user = new(userID, message.Nick, displayName, userType);
+                        TwitchUser.Type userType = m_API.GetUserType(false, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
+                        TwitchUser user = new(userID, message.Nick, displayName, userType);
                         int cumulativeMonth = int.Parse(message.GetTag("msg-param-cumulative-months"));
                         bool shareStreakMonth = message.GetTag("msg-param-cumulative-months") == "1";
                         int streakMonth = message.HaveTag("msg-param-streak-months") ? int.Parse(message.GetTag("msg-param-streak-months")) : -1;
@@ -188,15 +188,15 @@ namespace TwitchCorpse
                             default: return;
                         }
                         string userID = message.GetTag("user-id");
-                        User.Type userType = m_API.GetUserType(false, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
-                        User user = new(userID, message.Nick, displayName, userType);
+                        TwitchUser.Type userType = m_API.GetUserType(false, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
+                        TwitchUser user = new(userID, message.Nick, displayName, userType);
 
                         string recipientName = message.GetTag("msg-param-recipient-user-name");
                         string recipientDisplayName = message.GetTag("msg-param-recipient-display-name");
                         if (string.IsNullOrEmpty(recipientDisplayName))
                             recipientDisplayName = recipientName;
                         string recipientID = message.GetTag("msg-param-recipient-id");
-                        User recipient = new(recipientID, recipientName, recipientDisplayName, User.Type.NONE);
+                        TwitchUser recipient = new(recipientID, recipientName, recipientDisplayName, TwitchUser.Type.NONE);
 
                         int monthGifted = int.Parse(message.GetTag("msg-param-gift-months"));
                         int cumulativeMonth = int.Parse(message.GetTag("msg-param-months"));
@@ -207,7 +207,7 @@ namespace TwitchCorpse
             }
         }
 
-        private void LoadEmoteSets(ChatMessage message)
+        private void LoadEmoteSets(TwitchChatMessage message)
         {
             if (message.HaveTag("emote-sets"))
             {
@@ -228,14 +228,14 @@ namespace TwitchCorpse
                 {
                     string data = dataBuffer[..position];
                     dataBuffer = dataBuffer[(position + 2)..];
-                    ChatMessage? message = Parse(data, m_API);
+                    TwitchChatMessage? message = Parse(data, m_API);
                     if (message != null)
                     {
                         switch (message.GetCommand().Name)
                         {
                             case "PING":
                                 {
-                                    SendMessage(new ChatMessage("PONG", parameters: message.Parameters));
+                                    SendMessage(new TwitchChatMessage("PONG", parameters: message.Parameters));
                                     break;
                                 }
                             case "USERSTATE":
@@ -249,7 +249,7 @@ namespace TwitchCorpse
                                     TWITCH_IRC.Log(string.Format("<= {0}", data));
                                     if (m_SelfUserInfo?.Name != message.Nick)
                                     {
-                                        User? user = m_API.GetUserInfoFromLogin(message.Nick);
+                                        TwitchUser? user = m_API.GetUserInfoFromLogin(message.Nick);
                                         if (user != null)
                                             m_TwitchHandler?.OnUserJoinChat(user);
                                     }
@@ -265,7 +265,7 @@ namespace TwitchCorpse
                                     {
                                         if (m_SelfUserInfo?.Name != userLogin)
                                         {
-                                            User? user = m_API.GetUserInfoFromLogin(userLogin);
+                                            TwitchUser? user = m_API.GetUserInfoFromLogin(userLogin);
                                             if (user != null)
                                                 m_TwitchHandler?.OnUserJoinChat(user);
                                         }
@@ -287,7 +287,7 @@ namespace TwitchCorpse
                             case "LOGGED":
                                 {
                                     TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    SendMessage(new ChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
+                                    SendMessage(new TwitchChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
                                     break;
                                 }
                             case "GLOBALUSERSTATE":
@@ -310,12 +310,12 @@ namespace TwitchCorpse
 
         public void SendMessage(string message)
         {
-            ChatMessage messageToSend = new("PRIVMSG", channel: string.Format("#{0}", m_Channel), parameters: message);
+            TwitchChatMessage messageToSend = new("PRIVMSG", channel: string.Format("#{0}", m_Channel), parameters: message);
             SendMessage(messageToSend);
             CreateUserMessage(messageToSend, false, true);
         }
 
-        private void SendMessage(ChatMessage message)
+        private void SendMessage(TwitchChatMessage message)
         {
             try
             {

@@ -9,38 +9,38 @@ using System.Diagnostics;
 
 namespace TwitchCorpse
 {
-    public class PubSub : WebSocketProtocol
+    public class TwitchPubSub : WebSocketProtocol
     {
         public static readonly Logger PUBSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-PubSub.log") };
         public static void StartLogging() => PUBSUB.Start();
         public static void StopLogging() => PUBSUB.Stop();
 
         private readonly ITwitchHandler? m_TwitchHandler;
-        private readonly API m_API;
-        private readonly RefreshToken m_Token;
+        private readonly TwitchAPI m_API;
+        private readonly Token m_Token;
         private readonly Stopwatch m_Watch = new();
         private readonly string m_ChannelID;
 
         private long m_TimeSinceLastPing = 0;
         private long m_TimeBeforeNextPing = (new Random().Next(-15, 15) + 135) * 1000;
 
-        public static PubSub NewConnection(string channelID, API api, RefreshToken token, ITwitchHandler twitchHandler)
+        public static TwitchPubSub NewConnection(string channelID, TwitchAPI api, Token token, ITwitchHandler twitchHandler)
         {
-            PubSub protocol = new(api, token, channelID, twitchHandler);
+            TwitchPubSub protocol = new(api, token, channelID, twitchHandler);
             TCPAsyncClient twitchPubSubClient = new(protocol, URI.Parse("wss://pubsub-edge.twitch.tv"));
             twitchPubSubClient.Start();
             return protocol;
         }
 
-        public static PubSub NewConnection(string channelID, API api, RefreshToken token)
+        public static TwitchPubSub NewConnection(string channelID, TwitchAPI api, Token token)
         {
-            PubSub protocol = new(api, token, channelID, null);
+            TwitchPubSub protocol = new(api, token, channelID, null);
             TCPAsyncClient twitchPubSubClient = new(protocol, URI.Parse("wss://pubsub-edge.twitch.tv"));
             twitchPubSubClient.Start();
             return protocol;
         }
 
-        public PubSub(API api, RefreshToken token, string channelID, ITwitchHandler? twitchHandler) : base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
+        public TwitchPubSub(TwitchAPI api, Token token, string channelID, ITwitchHandler? twitchHandler) : base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
         {
             m_API = api;
             m_Token = token;
@@ -90,7 +90,7 @@ namespace TwitchCorpse
                     {
                         if (messageSender!.TryGet("login", out string? login))
                         {
-                            User? sender = m_API.GetUserInfoFromLogin(login!);
+                            TwitchUser? sender = m_API.GetUserInfoFromLogin(login!);
                             if (sender != null)
                                 m_TwitchHandler?.OnMessageHeld(sender, messageID!, GetMessage(messageData!));
                         }
@@ -143,7 +143,7 @@ namespace TwitchCorpse
                 m_TimeSinceLastPing += m_Watch.ElapsedMilliseconds;
                 if (m_TimeSinceLastPing >= m_TimeBeforeNextPing)
                 {
-                    PUBSUB.Log("<= PING");
+                    PUBSUB.Log("=> PING");
                     Send("{\"type\": \"PING\"}");
                     m_TimeSinceLastPing = 0;
                     m_TimeBeforeNextPing = (new Random().Next(-15, 15) + 135) * 1000; //2"15 +/- 15 seconds
