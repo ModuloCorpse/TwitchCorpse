@@ -261,11 +261,11 @@ namespace TwitchCorpse
                 return false;
             JFile body = new();
             if (!string.IsNullOrEmpty(title))
-                body.Set("title", title);
+                body.Add("title", title);
             if (!string.IsNullOrEmpty(gameID))
-                body.Set("game_id", gameID);
+                body.Add("game_id", gameID);
             if (!string.IsNullOrEmpty(language))
-                body.Set("broadcaster_language", language);
+                body.Add("broadcaster_language", language);
             Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), body, m_AccessToken);
             return response.StatusCode == 204;
         }
@@ -311,9 +311,9 @@ namespace TwitchCorpse
             if (m_SelfUserInfo == null)
                 return false;
             JFile json = new();
-            json.Set("user_id", m_SelfUserInfo.ID);
-            json.Set("msg_id", messageID);
-            json.Set("action", (allow) ? "ALLOW" : "DENY");
+            json.Add("user_id", m_SelfUserInfo.ID);
+            json.Add("msg_id", messageID);
+            json.Add("action", (allow) ? "ALLOW" : "DENY");
             Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/moderation/automod/message", json, m_AccessToken);
             return response.StatusCode == 204;
         }
@@ -324,11 +324,11 @@ namespace TwitchCorpse
                 return false;
             JFile json = new();
             JFile data = new();
-            data.Set("user_id", user.ID);
+            data.Add("user_id", user.ID);
             if (duration > 0)
-                data.Set("duration", duration);
-            data.Set("reason", reason);
-            json.Set("data", data);
+                data.Add("duration", duration);
+            data.Add("reason", reason);
+            json.Add("data", data);
             Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={0}", m_SelfUserInfo.ID), json, m_AccessToken);
             return response.StatusCode == 204;
         }

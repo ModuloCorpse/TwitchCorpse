@@ -165,16 +165,16 @@ namespace TwitchCorpse
             if (m_Token == null)
                 return false;
             JObject transportJson = new();
-            transportJson.Set("method", "websocket");
-            transportJson.Set("session_id", sessionID);
+            transportJson.Add("method", "websocket");
+            transportJson.Add("session_id", sessionID);
             JObject conditionJson = new();
             foreach (string condition in conditions)
-                conditionJson.Set(condition, m_ChannelID);
+                conditionJson.Add(condition, m_ChannelID);
             JObject message = new();
-            message.Set("type", subscriptionName);
-            message.Set("version", subscriptionVersion);
-            message.Set("condition", conditionJson);
-            message.Set("transport", transportJson);
+            message.Add("type", subscriptionName);
+            message.Add("version", subscriptionVersion);
+            message.Add("condition", conditionJson);
+            message.Add("transport", transportJson);
             URLRequest request = new(URI.Parse("https://api.twitch.tv/helix/eventsub/subscriptions"), Request.MethodType.POST, message.ToNetworkString());
             request.AddContentType(MIME.APPLICATION.JSON);
             request.AddRefreshToken(m_Token);
