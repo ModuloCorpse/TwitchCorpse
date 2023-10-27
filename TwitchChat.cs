@@ -34,6 +34,7 @@ namespace TwitchCorpse
             "#00ff7f"
         };
 
+        private readonly Dictionary<string, TwitchUser> m_LoadedUser = new();
         private readonly ITwitchHandler? m_TwitchHandler;
         private readonly TwitchAPI m_API;
         private readonly TwitchUser? m_SelfUserInfo = null;
@@ -108,24 +109,35 @@ namespace TwitchCorpse
             return color;
         }
 
+        private TwitchUser LoadUser(TwitchChatMessage message, bool self)
+        {
+            string userID = message.GetTag("user-id");
+            if (m_LoadedUser.TryGetValue(userID, out TwitchUser? user))
+                return user;
+            else
+            {
+                List<TwitchBadgeInfo> badges = new();
+                foreach (string badge in message.GetBadges())
+                {
+                    string version = message.GetBadgeVersion(badge);
+                    TwitchBadgeInfo? badgeInfo = m_API.GetBadge(badge, version);
+                    if (badgeInfo != null)
+                        badges.Add(badgeInfo);
+                }
+                string displayName = message.GetTag("display-name");
+                TwitchUser.Type userType = m_API.GetUserType(self, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
+                TwitchUser newUser = new(userID, message.Nick, displayName, userType, badges);
+                m_LoadedUser[userID] = newUser;
+                return newUser;
+            }
+        }
+
         private void CreateUserMessage(TwitchChatMessage message, bool highlight, bool self)
         {
-            string displayName;
-            if (self)
-            {
-                if (m_SelfUserInfo != null)
-                    displayName = m_SelfUserInfo.DisplayName;
-                else
-                    displayName = m_UserName;
-            }
-            else
-                displayName = message.GetTag("display-name");
-            string userID = message.GetTag("user-id");
-            TwitchUser.Type userType = m_API.GetUserType(self, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
-            TwitchUser user = new(userID, message.Nick, displayName, userType);
+            TwitchUser user = LoadUser(message, self);
             Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes);
             m_TwitchHandler?.OnChatMessage(user, highlight, message.GetTag("id"),
-                GetUserMessageColor(displayName, self ? m_ChatColor : message.GetTag("color")), displayableMessage);
+                GetUserMessageColor(user.DisplayName, self ? m_ChatColor : message.GetTag("color")), displayableMessage);
             if (message.HaveTag("bits"))
             {
                 int bits = int.Parse(message.GetTag("bits"));
@@ -145,9 +157,6 @@ namespace TwitchCorpse
                         message.HaveTag("msg-param-cumulative-months") &&
                         message.HaveTag("msg-param-should-share-streak"))
                     {
-                        string displayName = message.GetTag("display-name");
-                        if (string.IsNullOrEmpty(displayName))
-                            displayName = message.Nick;
                         int followTier;
                         switch (message.GetTag("msg-param-sub-plan"))
                         {
@@ -157,9 +166,7 @@ namespace TwitchCorpse
                             case "Prime": followTier = 4; break;
                             default: return;
                         }
-                        string userID = message.GetTag("user-id");
-                        TwitchUser.Type userType = m_API.GetUserType(false, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
-                        TwitchUser user = new(userID, message.Nick, displayName, userType);
+                        TwitchUser user = LoadUser(message, false);
                         int cumulativeMonth = int.Parse(message.GetTag("msg-param-cumulative-months"));
                         bool shareStreakMonth = message.GetTag("msg-param-cumulative-months") == "1";
                         int streakMonth = message.HaveTag("msg-param-streak-months") ? int.Parse(message.GetTag("msg-param-streak-months")) : -1;
@@ -175,9 +182,6 @@ namespace TwitchCorpse
                         message.HaveTag("msg-param-recipient-display-name") &&
                         message.HaveTag("msg-param-recipient-user-name"))
                     {
-                        string displayName = message.GetTag("display-name");
-                        if (string.IsNullOrEmpty(displayName))
-                            displayName = message.Nick;
                         int followTier;
                         switch (message.GetTag("msg-param-sub-plan"))
                         {
@@ -187,16 +191,18 @@ namespace TwitchCorpse
                             case "Prime": followTier = 4; break;
                             default: return;
                         }
-                        string userID = message.GetTag("user-id");
-                        TwitchUser.Type userType = m_API.GetUserType(false, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
-                        TwitchUser user = new(userID, message.Nick, displayName, userType);
+                        TwitchUser user = LoadUser(message, false);
 
-                        string recipientName = message.GetTag("msg-param-recipient-user-name");
-                        string recipientDisplayName = message.GetTag("msg-param-recipient-display-name");
-                        if (string.IsNullOrEmpty(recipientDisplayName))
-                            recipientDisplayName = recipientName;
-                        string recipientID = message.GetTag("msg-param-recipient-id");
-                        TwitchUser recipient = new(recipientID, recipientName, recipientDisplayName, TwitchUser.Type.NONE);
+                        string userID = message.GetTag("user-id");
+                        if (!m_LoadedUser.TryGetValue(userID, out TwitchUser? recipient))
+                        {
+                            string recipientName = message.GetTag("msg-param-recipient-user-name");
+                            string recipientDisplayName = message.GetTag("msg-param-recipient-display-name");
+                            if (string.IsNullOrEmpty(recipientDisplayName))
+                                recipientDisplayName = recipientName;
+                            string recipientID = message.GetTag("msg-param-recipient-id");
+                            recipient = new(recipientID, recipientName, recipientDisplayName, TwitchUser.Type.NONE, new());
+                        }
 
                         int monthGifted = int.Parse(message.GetTag("msg-param-gift-months"));
                         int cumulativeMonth = int.Parse(message.GetTag("msg-param-months"));
@@ -234,74 +240,75 @@ namespace TwitchCorpse
                         switch (message.GetCommand().Name)
                         {
                             case "PING":
-                                {
-                                    SendMessage(new TwitchChatMessage("PONG", parameters: message.Parameters));
-                                    break;
-                                }
+                            {
+                                SendMessage(new TwitchChatMessage("PONG", parameters: message.Parameters));
+                                break;
+                            }
                             case "USERSTATE":
-                                {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    LoadEmoteSets(message);
-                                    break;
-                                }
+                            {
+                                LoadUser(message, false);
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                LoadEmoteSets(message);
+                                break;
+                            }
                             case "JOIN":
+                            {
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                if (m_SelfUserInfo?.Name != message.Nick)
                                 {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    if (m_SelfUserInfo?.Name != message.Nick)
+                                    TwitchUser? user = m_API.GetUserInfoFromLogin(message.Nick);
+                                    if (user != null)
+                                        m_TwitchHandler?.OnUserJoinChat(user);
+                                }
+                                else
+                                    m_TwitchHandler?.OnChatJoined();
+                                break;
+                            }
+                            case "USERLIST":
+                            {
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                string[] users = message.Parameters.Split(' ');
+                                foreach (string userLogin in users)
+                                {
+                                    if (m_SelfUserInfo?.Name != userLogin)
                                     {
-                                        TwitchUser? user = m_API.GetUserInfoFromLogin(message.Nick);
+                                        TwitchUser? user = m_API.GetUserInfoFromLogin(userLogin);
                                         if (user != null)
                                             m_TwitchHandler?.OnUserJoinChat(user);
                                     }
-                                    else
-                                        m_TwitchHandler?.OnChatJoined();
-                                    break;
                                 }
-                            case "USERLIST":
-                                {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    string[] users = message.Parameters.Split(' ');
-                                    foreach (string userLogin in users)
-                                    {
-                                        if (m_SelfUserInfo?.Name != userLogin)
-                                        {
-                                            TwitchUser? user = m_API.GetUserInfoFromLogin(userLogin);
-                                            if (user != null)
-                                                m_TwitchHandler?.OnUserJoinChat(user);
-                                        }
-                                    }
-                                    break;
-                                }
+                                break;
+                            }
                             case "PRIVMSG":
-                                {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    CreateUserMessage(message, false, false);
-                                    break;
-                                }
+                            {
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                CreateUserMessage(message, false, false);
+                                break;
+                            }
                             case "USERNOTICE":
-                                {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    TreatUserNotice(message);
-                                    break;
-                                }
+                            {
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                TreatUserNotice(message);
+                                break;
+                            }
                             case "LOGGED":
-                                {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    SendMessage(new TwitchChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
-                                    break;
-                                }
+                            {
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                SendMessage(new TwitchChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
+                                break;
+                            }
                             case "GLOBALUSERSTATE":
-                                {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    LoadEmoteSets(message);
-                                    m_ChatColor = message.GetTag("color");
-                                    break;
-                                }
+                            {
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                LoadEmoteSets(message);
+                                m_ChatColor = message.GetTag("color");
+                                break;
+                            }
                             default:
-                                {
-                                    TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                    break;
-                                }
+                            {
+                                TWITCH_IRC.Log(string.Format("<= {0}", data));
+                                break;
+                            }
                         }
                     }
                 }
@@ -310,6 +317,12 @@ namespace TwitchCorpse
 
         public void SendMessage(string message)
         {
+            Tags tags = new();
+            tags.AddTag("display-name", m_SelfUserInfo?.DisplayName ?? m_UserName);
+            if (m_SelfUserInfo != null)
+            {
+                tags.AddTag("user-id", m_SelfUserInfo.ID);
+            }
             TwitchChatMessage messageToSend = new("PRIVMSG", channel: string.Format("#{0}", m_Channel), parameters: message);
             SendMessage(messageToSend);
             CreateUserMessage(messageToSend, false, true);

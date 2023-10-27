@@ -115,7 +115,7 @@ namespace TwitchCorpse
                 if (m_Data.TryGet(string.Format("{0}user_id", user), out string? id) &&
                     m_Data.TryGet(string.Format("{0}user_login", user), out string? login) &&
                     m_Data.TryGet(string.Format("{0}user_name", user), out string? name))
-                    return new(id!, login!, name!, TwitchUser.Type.NONE);
+                    return new(id!, login!, name!, TwitchUser.Type.NONE, new());
                 return null;
             }
 

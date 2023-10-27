@@ -98,6 +98,7 @@ namespace TwitchCorpse
             private readonly List<SimpleEmote> m_OrderedEmotes = new();
             private readonly HashSet<string> m_EmotesSets = new();
 
+            public string[] Badges => m_Badges.Keys.ToArray();
             public HashSet<string> EmotesSets => m_EmotesSets;
             public List<SimpleEmote> OrderedEmotes => m_OrderedEmotes;
 
@@ -111,9 +112,16 @@ namespace TwitchCorpse
                 return string.Empty;
             }
 
+            internal string GetBadgeVersion(string badge)
+            {
+                if (m_Badges.TryGetValue(badge, out var version))
+                    return version;
+                return string.Empty;
+            }
+
             internal void AddTag(string tag, string value) => m_Tags[tag] = value;
             internal void AddBadge(string badge, string value) => m_Badges[badge] = value;
-            internal void AddBadgeInfo(string badge, string info) => m_BadgeInfos[badge] = info;
+            internal void AddBadgeVersion(string badge, string version) => m_BadgeInfos[badge] = version;
             internal void AddEmoteSet(string id) => m_EmotesSets.Add(id);
             internal void AddEmote(string id, int start, int end)
             {
@@ -234,6 +242,7 @@ namespace TwitchCorpse
         public Command GetCommand() => m_Command;
         public bool HaveTags => m_Tags != null;
         public Tags? GetTags() => m_Tags;
+        public string[] GetBadges() => m_Tags?.Badges ?? Array.Empty<string>();
         public string Nick => m_Nick;
         public string Host => m_Host;
         public string Parameters => m_Parameters;
@@ -258,6 +267,13 @@ namespace TwitchCorpse
         {
             if (m_Tags != null)
                 return m_Tags.GetTag(tag);
+            return string.Empty;
+        }
+
+        public string GetBadgeVersion(string badge)
+        {
+            if (m_Tags != null)
+                return m_Tags.GetBadgeVersion(badge);
             return string.Empty;
         }
 
@@ -327,7 +343,7 @@ namespace TwitchCorpse
                                     if (tagName == "badges")
                                         tags.AddBadge(badgeParts[0], badgeParts[1]);
                                     else
-                                        tags.AddBadgeInfo(badgeParts[0], badgeParts[1]);
+                                        tags.AddBadgeVersion(badgeParts[0], badgeParts[1]);
                                 }
                             }
                         }

@@ -13,13 +13,14 @@ namespace TwitchCorpse
         public static void StartLogging() => TWITCH_API.Start();
         public static void StopLogging() => TWITCH_API.Stop();
 
+        private readonly Dictionary<string, Dictionary<string, TwitchBadgeInfo>> m_CachedBadges = new();
         private readonly Dictionary<string, TwitchEmoteInfo> m_CachedEmotes = new();
         private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromLogin = new();
         private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromID = new();
         private readonly HashSet<string> m_LoadedChannelIDEmoteSets = new();
         private readonly HashSet<string> m_LoadedEmoteSets = new();
         private readonly RefreshToken m_AccessToken;
-        private readonly TwitchUser m_SelfUserInfo = new(string.Empty, string.Empty, TwitchUser.Type.BROADCASTER);
+        private readonly TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
         private string m_EmoteURLTemplate = string.Empty;
 
         public TwitchAPI(RefreshToken accessToken)
@@ -61,6 +62,61 @@ namespace TwitchCorpse
         }
 
         private static Response SendRequest(Request.MethodType method, string url, RefreshToken? token) => SendComposedRequest(new(URI.Parse(url), method), token);
+
+        private JFile LoadBadgeContent(string content)
+        {
+            JFile responseJson = new(content);
+            List<JObject> datas = responseJson.GetList<JObject>("data");
+            foreach (JObject data in datas)
+            {
+                if (data.TryGet("set_id", out string? setID))
+                {
+                    List<JObject> versions = data.GetList<JObject>("versions");
+                    foreach (JObject version in versions)
+                    {
+                        if (version.TryGet("id", out string? id) &&
+                            version.TryGet("image_url_1x", out string? url1x) &&
+                            version.TryGet("image_url_2x", out string? url2x) &&
+                            version.TryGet("image_url_4x", out string? url4x) &&
+                            version.TryGet("title", out string? title) &&
+                            version.TryGet("description", out string? description) &&
+                            version.TryGet("click_action", out string? clickAction) &&
+                            version.TryGet("click_url", out string? clickURL))
+                        {
+                            TwitchBadgeInfo badgeInfo = new(id!, url1x!, url2x!, url4x!, title!, description!, clickAction!, clickURL ?? string.Empty);
+                            if (!m_CachedBadges.ContainsKey(setID!))
+                                m_CachedBadges[setID!] = new();
+                            m_CachedBadges[setID!][badgeInfo.ID] = badgeInfo;
+                        }
+                    }
+                }
+            }
+            return responseJson;
+        }
+
+        public void LoadGlobalChatBadges()
+        {
+            Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/chat/badges/global", m_AccessToken);
+            if (response.StatusCode == 200)
+                LoadBadgeContent(response.Body);
+        }
+
+        public void LoadChannelChatBadges(TwitchUser user)
+        {
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/chat/badges?broadcaster_id={0}", user.ID), m_AccessToken);
+            if (response.StatusCode == 200)
+                LoadBadgeContent(response.Body);
+        }
+
+        public TwitchBadgeInfo? GetBadge(string badge, string id)
+        {
+            if (m_CachedBadges.TryGetValue(badge, out Dictionary<string, TwitchBadgeInfo>? badgesInfo))
+            {
+                if (badgesInfo.TryGetValue(id, out TwitchBadgeInfo? badgeInfo))
+                    return badgeInfo;
+            }
+            return null;
+        }
 
         private JFile LoadEmoteSetContent(string content)
         {
@@ -194,7 +250,7 @@ namespace TwitchCorpse
                     data.TryGet("login", out string? login) &&
                     data.TryGet("display_name", out string? displayName) &&
                     data.TryGet("type", out string? type))
-                    return new(id!, login!, displayName!, (userType != null) ? (TwitchUser.Type)userType! : GetUserType(false, type!, id!));
+                    return new(id!, login!, displayName!, (userType != null) ? (TwitchUser.Type)userType! : GetUserType(false, type!, id!), new());
             }
             return null;
         }
@@ -282,7 +338,7 @@ namespace TwitchCorpse
                     if (data.TryGet("to_id", out string? toID) &&
                         data.TryGet("to_login", out string? toLogin) &&
                         data.TryGet("to_name", out string? toName))
-                        ret.Add(new(toID!, toLogin!, toName!, GetUserType(false, string.Empty, toID!)));
+                        ret.Add(new(toID!, toLogin!, toName!, GetUserType(false, string.Empty, toID!), new()));
                 }
             }
             return ret;
@@ -361,7 +417,7 @@ namespace TwitchCorpse
                         data.TryGet("language", out string? language) &&
                         data.TryGet("thumbnail_url", out string? thumbnailURL) &&
                         data.TryGet("is_mature", out bool? isMature))
-                        ret.Add(new(new(userID!, userLogin!, userName!, GetUserType(false, string.Empty, userID!)), data.GetList<string>("tags"), id!, gameID!, gameName!, title!, language!, thumbnailURL!, (int)viewerCount!, (bool)isMature!));
+                        ret.Add(new(new(userID!, userLogin!, userName!, GetUserType(false, string.Empty, userID!), new()), data.GetList<string>("tags"), id!, gameID!, gameName!, title!, language!, thumbnailURL!, (int)viewerCount!, (bool)isMature!));
                 }
             }
             return ret;
