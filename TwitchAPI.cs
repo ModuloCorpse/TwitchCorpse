@@ -249,8 +249,9 @@ namespace TwitchCorpse
                 if (data.TryGet("id", out string? id) &&
                     data.TryGet("login", out string? login) &&
                     data.TryGet("display_name", out string? displayName) &&
-                    data.TryGet("type", out string? type))
-                    return new(id!, login!, displayName!, (userType != null) ? (TwitchUser.Type)userType! : GetUserType(false, type!, id!), new());
+                    data.TryGet("type", out string? type) &&
+                    data.TryGet("profile_image_url", out string? profileImageURL))
+                    return new(id!, login!, displayName!, profileImageURL!, (userType != null) ? (TwitchUser.Type)userType! : GetUserType(false, type!, id!), new());
             }
             return null;
         }
@@ -283,6 +284,8 @@ namespace TwitchCorpse
             }
             return null;
         }
+
+        public string GetUserProfilePictureFromLogin(string login) => GetUserInfoFromLogin(login)?.ProfileImageURL ?? string.Empty;
 
         public TwitchChannelInfo? GetChannelInfo(string login)
         {
@@ -338,7 +341,7 @@ namespace TwitchCorpse
                     if (data.TryGet("to_id", out string? toID) &&
                         data.TryGet("to_login", out string? toLogin) &&
                         data.TryGet("to_name", out string? toName))
-                        ret.Add(new(toID!, toLogin!, toName!, GetUserType(false, string.Empty, toID!), new()));
+                        ret.Add(new(toID!, toLogin!, toName!, string.Empty, GetUserType(false, string.Empty, toID!), new()));
                 }
             }
             return ret;
@@ -417,7 +420,7 @@ namespace TwitchCorpse
                         data.TryGet("language", out string? language) &&
                         data.TryGet("thumbnail_url", out string? thumbnailURL) &&
                         data.TryGet("is_mature", out bool? isMature))
-                        ret.Add(new(new(userID!, userLogin!, userName!, GetUserType(false, string.Empty, userID!), new()), data.GetList<string>("tags"), id!, gameID!, gameName!, title!, language!, thumbnailURL!, (int)viewerCount!, (bool)isMature!));
+                        ret.Add(new(new(userID!, userLogin!, userName!, string.Empty, GetUserType(false, string.Empty, userID!), new()), data.GetList<string>("tags"), id!, gameID!, gameName!, title!, language!, thumbnailURL!, (int)viewerCount!, (bool)isMature!));
                 }
             }
             return ret;

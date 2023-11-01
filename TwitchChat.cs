@@ -126,7 +126,7 @@ namespace TwitchCorpse
                 }
                 string displayName = message.GetTag("display-name");
                 TwitchUser.Type userType = m_API.GetUserType(self, message.GetTag("mod") == "1", message.GetTag("user-type"), userID);
-                TwitchUser newUser = new(userID, message.Nick, displayName, userType, badges);
+                TwitchUser newUser = new(userID, message.Nick, displayName, string.Empty, userType, badges);
                 m_LoadedUser[userID] = newUser;
                 return newUser;
             }
@@ -201,7 +201,7 @@ namespace TwitchCorpse
                             if (string.IsNullOrEmpty(recipientDisplayName))
                                 recipientDisplayName = recipientName;
                             string recipientID = message.GetTag("msg-param-recipient-id");
-                            recipient = new(recipientID, recipientName, recipientDisplayName, TwitchUser.Type.NONE, new());
+                            recipient = new(recipientID, recipientName, recipientDisplayName, string.Empty, TwitchUser.Type.NONE, new());
                         }
 
                         int monthGifted = int.Parse(message.GetTag("msg-param-gift-months"));
@@ -302,6 +302,25 @@ namespace TwitchCorpse
                                 TWITCH_IRC.Log(string.Format("<= {0}", data));
                                 LoadEmoteSets(message);
                                 m_ChatColor = message.GetTag("color");
+                                break;
+                            }
+                            case "CLEARCHAT":
+                            {
+                                if (message.HaveTag("target-user-id"))
+                                    m_TwitchHandler?.OnChatUserRemoved(message.GetTag("target-user-id"));
+                                else
+                                    m_TwitchHandler?.OnChatClear();
+                                break;
+                            }
+                            case "CLEARMSG":
+                            {
+                                if (message.HaveTag("target-msg-id"))
+                                    m_TwitchHandler?.OnChatMessageRemoved(message.GetTag("target-msg-id"));
+                                break;
+                            }
+                            case "RECONNECT":
+                            {
+                                Reconnect();
                                 break;
                             }
                             default:

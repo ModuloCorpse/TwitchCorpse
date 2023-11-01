@@ -52,11 +52,15 @@ namespace TwitchCorpse
         {
             PUBSUB.Log("<= Listening to automod-queue");
             List<string> topics = new() { string.Format("automod-queue.{0}.{0}", m_ChannelID) };
-            JObject json = new();
-            json.Add("type", "LISTEN");
-            JObject data = new();
-            data.Add("topics", topics);
-            data.Add("auth_token", m_Token.AccessToken);
+            JObject json = new()
+            {
+                { "type", "LISTEN" }
+            };
+            JObject data = new()
+            {
+                { "topics", topics },
+                { "auth_token", m_Token.AccessToken }
+            };
             json.Add("data", data);
             Send(json.ToNetworkString());
             m_Watch.Start();

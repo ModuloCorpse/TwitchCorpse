@@ -4,6 +4,9 @@ namespace TwitchCorpse
 {
     public interface ITwitchHandler
     {
+        public void OnChatMessageRemoved(string messageID);
+        public void OnChatUserRemoved(string userID);
+        public void OnChatClear();
         public void OnChatMessage(TwitchUser user, bool isHighlight, string messageId, string messageColor, Text message);
         public void OnBits(TwitchUser user, int bits, Text message);
         public void OnChatJoined();
