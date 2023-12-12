@@ -18,8 +18,8 @@ namespace TwitchCorpse
             private readonly string m_ID = obj.Get<string>("message_id")!;
             private readonly string m_Type = obj.Get<string>("message_type")!;
             private readonly string m_Timestamp = obj.Get<string>("message_timestamp")!;
-            private readonly string m_Subscription = obj.GetOrDefault("subscription_type", "")!;
-            private readonly string m_Version = obj.GetOrDefault("subscription_version", "")!;
+            private readonly string m_Subscription = obj.GetOrDefault("subscription_type", string.Empty)!;
+            private readonly string m_Version = obj.GetOrDefault("subscription_version", string.Empty)!;
 
             public string ID => m_ID;
             public string Type => m_Type;
@@ -45,15 +45,15 @@ namespace TwitchCorpse
                 m_Method = obj.Get<string>("method")!;
                 if (m_Method == "websocket")
                 {
-                    m_Callback = "";
-                    m_Secret = "";
+                    m_Callback = string.Empty;
+                    m_Secret = string.Empty;
                     m_SessionID = obj.Get<string>("session_id")!;
                 }
                 else
                 {
-                    m_SessionID = "";
+                    m_SessionID = string.Empty;
                     m_Callback = obj.Get<string>("callback")!;
-                    m_Secret = obj.GetOrDefault("secret", "")!;
+                    m_Secret = obj.GetOrDefault("secret", string.Empty)!;
                 }
             }
         }

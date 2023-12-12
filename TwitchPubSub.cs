@@ -61,7 +61,7 @@ namespace TwitchCorpse
 
         private static Text GetMessage(JObject messageData)
         {
-            string messageText = messageData.GetOrDefault("text", "")!;
+            string messageText = messageData.GetOrDefault("text", string.Empty)!;
             List<JObject> fragmentsObject = messageData.GetList<JObject>("fragments");
             List<string> fragments = [];
             foreach (JObject fragment in fragmentsObject)
