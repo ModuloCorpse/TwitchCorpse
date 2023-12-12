@@ -23,6 +23,7 @@ namespace TwitchCorpse
             "moderator:manage:banned_users",
             "moderator:manage:blocked_terms",
             "moderator:manage:chat_messages",
+            "moderator:manage:shoutouts",
             "moderation:read",
             "user:read:email",
             "whispers:read"

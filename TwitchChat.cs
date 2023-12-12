@@ -43,6 +43,8 @@ namespace TwitchCorpse
         private readonly string m_UserName = string.Empty;
         private string m_ChatColor = string.Empty;
 
+        public TwitchUser Self => m_SelfUserInfo!;
+
         public static TwitchChat NewConnection(TwitchAPI api, string channel, string username, RefreshToken token, ITwitchHandler twitchHandler)
         {
             TwitchChat protocol = new(api, channel, username, token, twitchHandler);
@@ -69,6 +71,8 @@ namespace TwitchCorpse
                 TwitchEmoteInfo? emoteInfo = api.GetEmoteFromID(emote.ID);
                 if (emoteInfo != null)
                     ret.AddImage(api.GetEmoteURL(emote.ID, false, 3, false));
+                else
+                    ret.AddText(message[emote.Start..(emote.End + 1)]);
                 lastIndex = emote.End + 1;
             }
             if (lastIndex < message.Length)
@@ -224,6 +228,106 @@ namespace TwitchCorpse
             }
         }
 
+        private void TreatReceivedMessage(string data)
+        {
+            TwitchChatMessage? message = Parse(data, m_API);
+            if (message != null)
+            {
+                switch (message.GetCommand().Name)
+                {
+                    case "PING":
+                    {
+                        SendMessage(new TwitchChatMessage("PONG", parameters: message.Parameters));
+                        break;
+                    }
+                    case "USERSTATE":
+                    {
+                        LoadUser(message, false);
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        LoadEmoteSets(message);
+                        break;
+                    }
+                    case "JOIN":
+                    {
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        if (m_SelfUserInfo?.Name != message.Nick)
+                        {
+                            TwitchUser? user = m_API.GetUserInfoFromLogin(message.Nick);
+                            if (user != null)
+                                m_TwitchHandler?.OnUserJoinChat(user);
+                        }
+                        else
+                            m_TwitchHandler?.OnChatJoined();
+                        break;
+                    }
+                    case "USERLIST":
+                    {
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        string[] users = message.Parameters.Split(' ');
+                        foreach (string userLogin in users)
+                        {
+                            if (m_SelfUserInfo?.Name != userLogin)
+                            {
+                                TwitchUser? user = m_API.GetUserInfoFromLogin(userLogin);
+                                if (user != null)
+                                    m_TwitchHandler?.OnUserJoinChat(user);
+                            }
+                        }
+                        break;
+                    }
+                    case "PRIVMSG":
+                    {
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        CreateUserMessage(message, false, false);
+                        break;
+                    }
+                    case "USERNOTICE":
+                    {
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        TreatUserNotice(message);
+                        break;
+                    }
+                    case "LOGGED":
+                    {
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        SendMessage(new TwitchChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
+                        break;
+                    }
+                    case "GLOBALUSERSTATE":
+                    {
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        LoadEmoteSets(message);
+                        m_ChatColor = message.GetTag("color");
+                        break;
+                    }
+                    case "CLEARCHAT":
+                    {
+                        if (message.HaveTag("target-user-id"))
+                            m_TwitchHandler?.OnChatUserRemoved(message.GetTag("target-user-id"));
+                        else
+                            m_TwitchHandler?.OnChatClear();
+                        break;
+                    }
+                    case "CLEARMSG":
+                    {
+                        if (message.HaveTag("target-msg-id"))
+                            m_TwitchHandler?.OnChatMessageRemoved(message.GetTag("target-msg-id"));
+                        break;
+                    }
+                    case "RECONNECT":
+                    {
+                        Reconnect();
+                        break;
+                    }
+                    default:
+                    {
+                        TWITCH_IRC.Log(string.Format("<= {0}", data));
+                        break;
+                    }
+                }
+            }
+        }
+
         internal void TreatReceivedBuffer(string dataBuffer)
         {
             int position;
@@ -234,104 +338,19 @@ namespace TwitchCorpse
                 {
                     string data = dataBuffer[..position];
                     dataBuffer = dataBuffer[(position + 2)..];
-                    TwitchChatMessage? message = Parse(data, m_API);
-                    if (message != null)
-                    {
-                        switch (message.GetCommand().Name)
-                        {
-                            case "PING":
-                            {
-                                SendMessage(new TwitchChatMessage("PONG", parameters: message.Parameters));
-                                break;
-                            }
-                            case "USERSTATE":
-                            {
-                                LoadUser(message, false);
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                LoadEmoteSets(message);
-                                break;
-                            }
-                            case "JOIN":
-                            {
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                if (m_SelfUserInfo?.Name != message.Nick)
-                                {
-                                    TwitchUser? user = m_API.GetUserInfoFromLogin(message.Nick);
-                                    if (user != null)
-                                        m_TwitchHandler?.OnUserJoinChat(user);
-                                }
-                                else
-                                    m_TwitchHandler?.OnChatJoined();
-                                break;
-                            }
-                            case "USERLIST":
-                            {
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                string[] users = message.Parameters.Split(' ');
-                                foreach (string userLogin in users)
-                                {
-                                    if (m_SelfUserInfo?.Name != userLogin)
-                                    {
-                                        TwitchUser? user = m_API.GetUserInfoFromLogin(userLogin);
-                                        if (user != null)
-                                            m_TwitchHandler?.OnUserJoinChat(user);
-                                    }
-                                }
-                                break;
-                            }
-                            case "PRIVMSG":
-                            {
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                CreateUserMessage(message, false, false);
-                                break;
-                            }
-                            case "USERNOTICE":
-                            {
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                TreatUserNotice(message);
-                                break;
-                            }
-                            case "LOGGED":
-                            {
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                SendMessage(new TwitchChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
-                                break;
-                            }
-                            case "GLOBALUSERSTATE":
-                            {
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                LoadEmoteSets(message);
-                                m_ChatColor = message.GetTag("color");
-                                break;
-                            }
-                            case "CLEARCHAT":
-                            {
-                                if (message.HaveTag("target-user-id"))
-                                    m_TwitchHandler?.OnChatUserRemoved(message.GetTag("target-user-id"));
-                                else
-                                    m_TwitchHandler?.OnChatClear();
-                                break;
-                            }
-                            case "CLEARMSG":
-                            {
-                                if (message.HaveTag("target-msg-id"))
-                                    m_TwitchHandler?.OnChatMessageRemoved(message.GetTag("target-msg-id"));
-                                break;
-                            }
-                            case "RECONNECT":
-                            {
-                                Reconnect();
-                                break;
-                            }
-                            default:
-                            {
-                                TWITCH_IRC.Log(string.Format("<= {0}", data));
-                                break;
-                            }
-                        }
-                    }
+                    TreatReceivedMessage(data);
                 }
             } while (position >= 0);
+        }
+
+        public void TestMessage(string message) => TreatReceivedMessage(message);
+        public void TestMessages(IEnumerable<string> messages)
+        {
+            foreach (string message in messages)
+            {
+                TreatReceivedMessage(message);
+                Thread.Sleep(100);
+            }
         }
 
         public void SendMessage(string message)

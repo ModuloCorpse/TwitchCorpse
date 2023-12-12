@@ -369,10 +369,12 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JFile json = new();
-            json.Add("user_id", m_SelfUserInfo.ID);
-            json.Add("msg_id", messageID);
-            json.Add("action", (allow) ? "ALLOW" : "DENY");
+            JFile json = new()
+            {
+                { "user_id", m_SelfUserInfo.ID },
+                { "msg_id", messageID },
+                { "action", (allow) ? "ALLOW" : "DENY" }
+            };
             Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/moderation/automod/message", json, m_AccessToken);
             return response.StatusCode == 204;
         }
@@ -382,8 +384,10 @@ namespace TwitchCorpse
             if (m_SelfUserInfo == null)
                 return false;
             JFile json = new();
-            JFile data = new();
-            data.Add("user_id", user.ID);
+            JFile data = new()
+            {
+                { "user_id", user.ID }
+            };
             if (duration > 0)
                 data.Add("duration", duration);
             data.Add("reason", reason);
@@ -424,6 +428,19 @@ namespace TwitchCorpse
                 }
             }
             return ret;
+        }
+
+        public bool StartCommercial(uint duration)
+        {
+            if (m_SelfUserInfo == null)
+                return false;
+            JFile json = new()
+            {
+                { "broadcaster_id", m_SelfUserInfo.ID },
+                { "length", duration }
+            };
+            Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/channels/commercial", json, m_AccessToken);
+            return response.StatusCode == 200;
         }
     }
 }

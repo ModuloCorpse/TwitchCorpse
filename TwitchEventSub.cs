@@ -4,6 +4,7 @@ using CorpseLib.Network;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
 using CorpseLib.Web.OAuth;
+using System.Threading.Channels;
 
 namespace TwitchCorpse
 {
@@ -164,17 +165,21 @@ namespace TwitchCorpse
         {
             if (m_Token == null)
                 return false;
-            JObject transportJson = new();
-            transportJson.Add("method", "websocket");
-            transportJson.Add("session_id", sessionID);
+            JObject transportJson = new()
+            {
+                { "method", "websocket" },
+                { "session_id", sessionID }
+            };
             JObject conditionJson = new();
             foreach (string condition in conditions)
                 conditionJson.Add(condition, m_ChannelID);
-            JObject message = new();
-            message.Add("type", subscriptionName);
-            message.Add("version", subscriptionVersion);
-            message.Add("condition", conditionJson);
-            message.Add("transport", transportJson);
+            JObject message = new()
+            {
+                { "type", subscriptionName },
+                { "version", subscriptionVersion },
+                { "condition", conditionJson },
+                { "transport", transportJson }
+            };
             URLRequest request = new(URI.Parse("https://api.twitch.tv/helix/eventsub/subscriptions"), Request.MethodType.POST, message.ToNetworkString());
             request.AddContentType(MIME.APPLICATION.JSON);
             request.AddRefreshToken(m_Token);
@@ -213,7 +218,11 @@ namespace TwitchCorpse
                         return;
                     if (!RegisterSubscription(sessionID!, "stream.online", 1, "broadcaster_user_id"))
                         return;
-                    RegisterSubscription(sessionID!, "stream.offline", 1, "broadcaster_user_id");
+                    if (!RegisterSubscription(sessionID!, "stream.offline", 1, "broadcaster_user_id"))
+                        return;
+                    if (!RegisterSubscription(sessionID!, "channel.shoutout.create", 1, "broadcaster_user_id", "moderator_user_id"))
+                        return;
+                    RegisterSubscription(sessionID!, "channel.shoutout.receive", 1, "broadcaster_user_id", "moderator_user_id");
                 }
             }
         }
@@ -287,6 +296,21 @@ namespace TwitchCorpse
             }
         }
 
+        private void HandleShoutout(EventData data)
+        {
+            TwitchUser? moderator = data.GetUser("moderator_");
+            TwitchUser? to = data.GetUser("to_broadcaster_");
+            if (moderator != null && to != null)
+                m_TwitchHandler?.OnShoutout(moderator, to);
+        }
+
+        private void HandleBeingShoutout(EventData data)
+        {
+            TwitchUser? from = data.GetUser("from_broadcaster_");
+            if (from != null)
+                m_TwitchHandler?.OnBeingShoutout(from);
+        }
+
         private void HandleStreamStart() => m_TwitchHandler?.OnStreamStart();
 
         private void HandleStreamStop() => m_TwitchHandler?.OnStreamStop();
@@ -309,6 +333,8 @@ namespace TwitchCorpse
                     case "channel.channel_points_custom_reward_redemption.add": HandleReward(eventData); break;
                     case "stream.online": HandleStreamStart(); break;
                     case "stream.offline": HandleStreamStop(); break;
+                    case "channel.shoutout.create": HandleShoutout(eventData); break;
+                    case "channel.shoutout.receive": HandleBeingShoutout(eventData); break;
                     default: m_TwitchHandler?.UnhandledEventSub(message); break;
                 }
             }

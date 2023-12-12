@@ -19,6 +19,8 @@ namespace TwitchCorpse
         public void OnReward(TwitchUser user, string reward, string input);
         public void OnRaided(TwitchUser user, int nbViewer);
         public void OnRaiding(TwitchUser user, int nbViewer);
+        public void OnBeingShoutout(TwitchUser from);
+        public void OnShoutout(TwitchUser moderator, TwitchUser to);
         public void OnStreamStart();
         public void OnStreamStop();
 
