@@ -4,38 +4,28 @@ using CorpseLib.Network;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
 using CorpseLib.Web.OAuth;
-using System.Threading.Channels;
 
 namespace TwitchCorpse
 {
-    public class TwitchEventSub : WebSocketProtocol
+    public class TwitchEventSub(string channelID, Token token, ITwitchHandler? twitchHandler) : WebSocketProtocol(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
     {
         public static readonly Logger EVENTSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-EventSub.log") };
         public static void StartLogging() => EVENTSUB.Start();
         public static void StopLogging() => EVENTSUB.Stop();
 
-        public class Metadata
+        public class Metadata(JObject obj)
         {
-            private readonly string m_ID;
-            private readonly string m_Type;
-            private readonly string m_Timestamp;
-            private readonly string m_Subscription;
-            private readonly string m_Version;
+            private readonly string m_ID = obj.Get<string>("message_id")!;
+            private readonly string m_Type = obj.Get<string>("message_type")!;
+            private readonly string m_Timestamp = obj.Get<string>("message_timestamp")!;
+            private readonly string m_Subscription = obj.GetOrDefault("subscription_type", "")!;
+            private readonly string m_Version = obj.GetOrDefault("subscription_version", "")!;
 
             public string ID => m_ID;
             public string Type => m_Type;
             public string Timestamp => m_Timestamp;
             public string Subscription => m_Subscription;
             public string Version => m_Version;
-
-            public Metadata(JObject obj)
-            {
-                m_ID = obj.Get<string>("message_id")!;
-                m_Type = obj.Get<string>("message_type")!;
-                m_Timestamp = obj.Get<string>("message_timestamp")!;
-                m_Subscription = obj.GetOrDefault("subscription_type", "")!;
-                m_Version = obj.GetOrDefault("subscription_version", "")!;
-            }
         }
 
         public class Transport
@@ -70,7 +60,7 @@ namespace TwitchCorpse
 
         public class Subscription
         {
-            private readonly Dictionary<string, string> m_Conditions = new();
+            private readonly Dictionary<string, string> m_Conditions = [];
             private readonly Transport m_Transport;
             private readonly string m_ID;
             private readonly string m_Type;
@@ -105,18 +95,16 @@ namespace TwitchCorpse
             public string GetCondition(string condition) => m_Conditions[condition];
         }
 
-        public class EventData
+        public class EventData(JObject data)
         {
-            private readonly JObject m_Data;
-
-            public EventData(JObject data) { m_Data = data; }
+            private readonly JObject m_Data = data;
 
             public TwitchUser? GetUser(string user = "")
             {
                 if (m_Data.TryGet(string.Format("{0}user_id", user), out string? id) &&
                     m_Data.TryGet(string.Format("{0}user_login", user), out string? login) &&
                     m_Data.TryGet(string.Format("{0}user_name", user), out string? name))
-                    return new(id!, login!, name!, string.Empty, TwitchUser.Type.NONE, new());
+                    return new(id!, login!, name!, string.Empty, TwitchUser.Type.NONE, []);
                 return null;
             }
 
@@ -125,10 +113,10 @@ namespace TwitchCorpse
             public bool TryGet<T>(string key, out T? ret) => m_Data.TryGet(key, out ret);
         }
 
-        private readonly ITwitchHandler? m_TwitchHandler;
-        private readonly Token m_Token;
-        private readonly HashSet<string> m_TreatedMessage = new();
-        private readonly string m_ChannelID = "";
+        private readonly ITwitchHandler? m_TwitchHandler = twitchHandler;
+        private readonly Token m_Token = token;
+        private readonly HashSet<string> m_TreatedMessage = [];
+        private readonly string m_ChannelID = channelID;
 
         public static TwitchEventSub NewConnection(string channelID, Token token, ITwitchHandler twitchHandler)
         {
@@ -144,13 +132,6 @@ namespace TwitchCorpse
             TCPAsyncClient twitchEventSubClient = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
             twitchEventSubClient.Start();
             return protocol;
-        }
-
-        public TwitchEventSub(string channelID, Token token, ITwitchHandler? twitchHandler): base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
-        {
-            m_Token = token;
-            m_TwitchHandler = twitchHandler;
-            m_ChannelID = channelID;
         }
 
         public new void Reconnect()
@@ -170,7 +151,7 @@ namespace TwitchCorpse
                 { "method", "websocket" },
                 { "session_id", sessionID }
             };
-            JObject conditionJson = new();
+            JObject conditionJson = [];
             foreach (string condition in conditions)
                 conditionJson.Add(condition, m_ChannelID);
             JObject message = new()

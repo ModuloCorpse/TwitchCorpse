@@ -9,17 +9,17 @@ using System.Diagnostics;
 
 namespace TwitchCorpse
 {
-    public class TwitchPubSub : WebSocketProtocol
+    public class TwitchPubSub(TwitchAPI api, Token token, string channelID, ITwitchHandler? twitchHandler) : WebSocketProtocol(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
     {
         public static readonly Logger PUBSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-PubSub.log") };
         public static void StartLogging() => PUBSUB.Start();
         public static void StopLogging() => PUBSUB.Stop();
 
-        private readonly ITwitchHandler? m_TwitchHandler;
-        private readonly TwitchAPI m_API;
-        private readonly Token m_Token;
+        private readonly ITwitchHandler? m_TwitchHandler = twitchHandler;
+        private readonly TwitchAPI m_API = api;
+        private readonly Token m_Token = token;
         private readonly Stopwatch m_Watch = new();
-        private readonly string m_ChannelID;
+        private readonly string m_ChannelID = channelID;
 
         private long m_TimeSinceLastPing = 0;
         private long m_TimeBeforeNextPing = (new Random().Next(-15, 15) + 135) * 1000;
@@ -40,18 +40,10 @@ namespace TwitchCorpse
             return protocol;
         }
 
-        public TwitchPubSub(TwitchAPI api, Token token, string channelID, ITwitchHandler? twitchHandler) : base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) } })
-        {
-            m_API = api;
-            m_Token = token;
-            m_ChannelID = channelID;
-            m_TwitchHandler = twitchHandler;
-        }
-
         protected override void OnWSOpen(Response response)
         {
             PUBSUB.Log("<= Listening to automod-queue");
-            List<string> topics = new() { string.Format("automod-queue.{0}.{0}", m_ChannelID) };
+            List<string> topics = [string.Format("automod-queue.{0}.{0}", m_ChannelID)];
             JObject json = new()
             {
                 { "type", "LISTEN" }
@@ -71,7 +63,7 @@ namespace TwitchCorpse
         {
             string messageText = messageData.GetOrDefault("text", "")!;
             List<JObject> fragmentsObject = messageData.GetList<JObject>("fragments");
-            List<string> fragments = new();
+            List<string> fragments = [];
             foreach (JObject fragment in fragmentsObject)
             {
                 if (fragment.TryGet("text", out string? str))

@@ -3,9 +3,9 @@ using CorpseLib.Web.OAuth;
 
 namespace TwitchCorpse
 {
-    public class TwitchAuthenticator
+    public class TwitchAuthenticator(string publicKey, string privateKey)
     {
-        private readonly List<string> m_Scopes = new() {
+        private readonly List<string> m_Scopes = [
             "bits:read",
             "channel:manage:broadcast",
             "channel:manage:moderators",
@@ -27,18 +27,12 @@ namespace TwitchCorpse
             "moderation:read",
             "user:read:email",
             "whispers:read"
-        };
+        ];
 
         private string m_PageContent = string.Empty;
-        private readonly string m_PublicKey;
-        private readonly string m_PrivateKey;
+        private readonly string m_PublicKey = publicKey;
+        private readonly string m_PrivateKey = privateKey;
         private readonly int m_Port = 3000;
-
-        public TwitchAuthenticator(string publicKey, string privateKey)
-        {
-            m_PublicKey = publicKey;
-            m_PrivateKey = privateKey;
-        }
 
         public TwitchAuthenticator(string publicKey, string privateKey, int port) : this(publicKey, privateKey) => m_Port = port;
 
@@ -48,7 +42,7 @@ namespace TwitchCorpse
         {
             Authenticator authenticator = new("id.twitch.tv", string.Empty, m_Port);
             authenticator.SetPageContent(m_PageContent);
-            OperationResult<RefreshToken> result = authenticator.AuthorizationCode(m_Scopes.ToArray(), m_PublicKey, m_PrivateKey, browser);
+            OperationResult<RefreshToken> result = authenticator.AuthorizationCode([.. m_Scopes], m_PublicKey, m_PrivateKey, browser);
             if (result)
                 return result.Result;
             return null;

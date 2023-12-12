@@ -1,20 +1,12 @@
 ﻿namespace TwitchCorpse
 {
-    public class TwitchCategoryInfo
+    public class TwitchCategoryInfo(string id, string name, string imageURL)
     {
-        private readonly string m_ID;
-        private readonly string m_Name;
-        private readonly string m_ImageURL;
-
+        private readonly string m_ID = id;
+        private readonly string m_Name = name;
+        private readonly string m_ImageURL = imageURL;
         public string ID => m_ID;
         public string Name => m_Name;
         public string ImageURL => m_ImageURL;
-
-        public TwitchCategoryInfo(string id, string name, string imageURL)
-        {
-            m_ID = id;
-            m_Name = name;
-            m_ImageURL = imageURL;
-        }
     }
 }

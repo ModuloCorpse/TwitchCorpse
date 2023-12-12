@@ -13,12 +13,12 @@ namespace TwitchCorpse
         public static void StartLogging() => TWITCH_API.Start();
         public static void StopLogging() => TWITCH_API.Stop();
 
-        private readonly Dictionary<string, Dictionary<string, TwitchBadgeInfo>> m_CachedBadges = new();
-        private readonly Dictionary<string, TwitchEmoteInfo> m_CachedEmotes = new();
-        private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromLogin = new();
-        private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromID = new();
-        private readonly HashSet<string> m_LoadedChannelIDEmoteSets = new();
-        private readonly HashSet<string> m_LoadedEmoteSets = new();
+        private readonly Dictionary<string, Dictionary<string, TwitchBadgeInfo>> m_CachedBadges = [];
+        private readonly Dictionary<string, TwitchEmoteInfo> m_CachedEmotes = [];
+        private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromLogin = [];
+        private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromID = [];
+        private readonly HashSet<string> m_LoadedChannelIDEmoteSets = [];
+        private readonly HashSet<string> m_LoadedEmoteSets = [];
         private readonly RefreshToken m_AccessToken;
         private readonly TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
         private string m_EmoteURLTemplate = string.Empty;
@@ -85,7 +85,7 @@ namespace TwitchCorpse
                         {
                             TwitchBadgeInfo badgeInfo = new(id!, url1x!, url2x!, url4x!, title!, description!, clickAction!, clickURL ?? string.Empty);
                             if (!m_CachedBadges.ContainsKey(setID!))
-                                m_CachedBadges[setID!] = new();
+                                m_CachedBadges[setID!] = [];
                             m_CachedBadges[setID!][badgeInfo.ID] = badgeInfo;
                         }
                     }
@@ -251,7 +251,7 @@ namespace TwitchCorpse
                     data.TryGet("display_name", out string? displayName) &&
                     data.TryGet("type", out string? type) &&
                     data.TryGet("profile_image_url", out string? profileImageURL))
-                    return new(id!, login!, displayName!, profileImageURL!, (userType != null) ? (TwitchUser.Type)userType! : GetUserType(false, type!, id!), new());
+                    return new(id!, login!, displayName!, profileImageURL!, (userType != null) ? (TwitchUser.Type)userType! : GetUserType(false, type!, id!), []);
             }
             return null;
         }
@@ -318,7 +318,7 @@ namespace TwitchCorpse
         {
             if (string.IsNullOrEmpty(title) && string.IsNullOrEmpty(gameID) && string.IsNullOrEmpty(language))
                 return false;
-            JFile body = new();
+            JFile body = [];
             if (!string.IsNullOrEmpty(title))
                 body.Add("title", title);
             if (!string.IsNullOrEmpty(gameID))
@@ -331,7 +331,7 @@ namespace TwitchCorpse
 
         public List<TwitchUser> GetChannelFollowedByID(TwitchUser user)
         {
-            List<TwitchUser> ret = new();
+            List<TwitchUser> ret = [];
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users/follows?from_id={0}", user.ID), m_AccessToken);
             if (response.StatusCode == 200)
             {
@@ -341,7 +341,7 @@ namespace TwitchCorpse
                     if (data.TryGet("to_id", out string? toID) &&
                         data.TryGet("to_login", out string? toLogin) &&
                         data.TryGet("to_name", out string? toName))
-                        ret.Add(new(toID!, toLogin!, toName!, string.Empty, GetUserType(false, string.Empty, toID!), new()));
+                        ret.Add(new(toID!, toLogin!, toName!, string.Empty, GetUserType(false, string.Empty, toID!), []));
                 }
             }
             return ret;
@@ -349,7 +349,7 @@ namespace TwitchCorpse
 
         public List<TwitchCategoryInfo> SearchCategoryInfo(string query)
         {
-            List<TwitchCategoryInfo> ret = new();
+            List<TwitchCategoryInfo> ret = [];
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(query)), m_AccessToken);
             if (response.StatusCode == 200)
             {
@@ -383,7 +383,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JFile json = new();
+            JFile json = [];
             JFile data = new()
             {
                 { "user_id", user.ID }
@@ -406,7 +406,7 @@ namespace TwitchCorpse
 
         public List<TwitchStreamInfo> GetStreamInfoByID(TwitchUser user)
         {
-            List<TwitchStreamInfo> ret = new();
+            List<TwitchStreamInfo> ret = [];
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/streams?user_id={0}", user.ID), m_AccessToken);
             if (response.StatusCode == 200)
             {
@@ -424,7 +424,7 @@ namespace TwitchCorpse
                         data.TryGet("language", out string? language) &&
                         data.TryGet("thumbnail_url", out string? thumbnailURL) &&
                         data.TryGet("is_mature", out bool? isMature))
-                        ret.Add(new(new(userID!, userLogin!, userName!, string.Empty, GetUserType(false, string.Empty, userID!), new()), data.GetList<string>("tags"), id!, gameID!, gameName!, title!, language!, thumbnailURL!, (int)viewerCount!, (bool)isMature!));
+                        ret.Add(new(new(userID!, userLogin!, userName!, string.Empty, GetUserType(false, string.Empty, userID!), []), data.GetList<string>("tags"), id!, gameID!, gameName!, title!, language!, thumbnailURL!, (int)viewerCount!, (bool)isMature!));
                 }
             }
             return ret;

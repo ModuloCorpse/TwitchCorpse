@@ -3,7 +3,7 @@ using CorpseLib;
 
 namespace TwitchCorpse
 {
-    public class TwitchUser
+    public class TwitchUser(string id, string name, string displayName, string profileImageURL, TwitchUser.Type userType, List<TwitchBadgeInfo> badges)
     {
         public class JSerializer : AJSerializer<TwitchUser>
         {
@@ -40,12 +40,12 @@ namespace TwitchCorpse
             SELF
         }
 
-        private readonly List<TwitchBadgeInfo> m_Badges;
-        private readonly string m_ID;
-        private readonly string m_Name;
-        private readonly string m_DisplayName;
-        private readonly string m_ProfileImageURL;
-        private readonly Type m_UserType;
+        private readonly List<TwitchBadgeInfo> m_Badges = badges;
+        private readonly string m_ID = id;
+        private readonly string m_Name = name;
+        private readonly string m_DisplayName = displayName;
+        private readonly string m_ProfileImageURL = profileImageURL;
+        private readonly Type m_UserType = userType;
 
         public TwitchBadgeInfo[] Badges => m_Badges.ToArray();
         public string ID => m_ID;
@@ -54,16 +54,6 @@ namespace TwitchCorpse
         public string ProfileImageURL => m_ProfileImageURL;
         public Type UserType => m_UserType;
 
-        public TwitchUser(string id, string name, string displayName, string profileImageURL, Type userType, List<TwitchBadgeInfo> badges)
-        {
-            m_Badges = badges;
-            m_ID = id;
-            m_Name = name;
-            m_DisplayName = displayName;
-            m_ProfileImageURL = profileImageURL;
-            m_UserType = userType;
-        }
-
-        internal TwitchUser(Type userType) : this(string.Empty, string.Empty, string.Empty, string.Empty, userType, new()) {}
+        internal TwitchUser(Type userType) : this(string.Empty, string.Empty, string.Empty, string.Empty, userType, []) {}
     }
 }

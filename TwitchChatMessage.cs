@@ -4,20 +4,13 @@ namespace TwitchCorpse
 {
     public class TwitchChatMessage
     {
-        public class Command
+        public class Command(string name, string channel = "", bool isCapRequestEnabled = false)
         {
-            private readonly string m_Name;
-            private readonly string m_Channel;
+            private readonly string m_Name = name;
+            private readonly string m_Channel = channel;
             private string m_BotCommand = string.Empty;
             private string m_BotCommandParams = string.Empty;
-            private readonly bool m_IsCapRequestEnabled;
-
-            public Command(string name, string channel = "", bool isCapRequestEnabled = false)
-            {
-                m_Name = name;
-                m_Channel = channel;
-                m_IsCapRequestEnabled = isCapRequestEnabled;
-            }
+            private readonly bool m_IsCapRequestEnabled = isCapRequestEnabled;
 
             internal void SetBotCommand(string command, string param)
             {
@@ -32,18 +25,11 @@ namespace TwitchCorpse
             public string BotCommandParameters => m_BotCommandParams;
         }
 
-        public class SimpleEmote : IComparable<SimpleEmote>
+        public class SimpleEmote(string id, int start, int end) : IComparable<SimpleEmote>
         {
-            private readonly string m_ID;
-            private readonly int m_Start;
-            private readonly int m_End;
-
-            public SimpleEmote(string id, int start, int end)
-            {
-                m_ID = id;
-                m_Start = start;
-                m_End = end;
-            }
+            private readonly string m_ID = id;
+            private readonly int m_Start = start;
+            private readonly int m_End = end;
 
             public int CompareTo(SimpleEmote? comparePart)
             {
@@ -57,12 +43,10 @@ namespace TwitchCorpse
             public int End => m_End;
         }
 
-        public class Emote
+        public class Emote(string iD)
         {
-            private readonly List<Tuple<int, int>> m_Locations = new();
-            private readonly string m_ID;
-
-            public Emote(string iD) => m_ID = iD;
+            private readonly List<Tuple<int, int>> m_Locations = [];
+            private readonly string m_ID = iD;
 
             internal void AddLocation(int start, int end) => m_Locations.Add(new(start, end));
 
@@ -91,12 +75,12 @@ namespace TwitchCorpse
 
         public class Tags
         {
-            private readonly Dictionary<string, string> m_Tags = new();
-            private readonly Dictionary<string, string> m_Badges = new();
-            private readonly Dictionary<string, string> m_BadgeInfos = new();
-            private readonly Dictionary<string, Emote> m_Emotes = new();
-            private readonly List<SimpleEmote> m_OrderedEmotes = new();
-            private readonly HashSet<string> m_EmotesSets = new();
+            private readonly Dictionary<string, string> m_Tags = [];
+            private readonly Dictionary<string, string> m_Badges = [];
+            private readonly Dictionary<string, string> m_BadgeInfos = [];
+            private readonly Dictionary<string, Emote> m_Emotes = [];
+            private readonly List<SimpleEmote> m_OrderedEmotes = [];
+            private readonly HashSet<string> m_EmotesSets = [];
 
             public string[] Badges => m_Badges.Keys.ToArray();
             public HashSet<string> EmotesSets => m_EmotesSets;
@@ -242,12 +226,12 @@ namespace TwitchCorpse
         public Command GetCommand() => m_Command;
         public bool HaveTags => m_Tags != null;
         public Tags? GetTags() => m_Tags;
-        public string[] GetBadges() => m_Tags?.Badges ?? Array.Empty<string>();
+        public string[] GetBadges() => m_Tags?.Badges ?? [];
         public string Nick => m_Nick;
         public string Host => m_Host;
         public string Parameters => m_Parameters;
 
-        public List<SimpleEmote> Emotes => m_Tags != null ? m_Tags.OrderedEmotes : new();
+        public List<SimpleEmote> Emotes => m_Tags != null ? m_Tags.OrderedEmotes : [];
 
         public bool HaveTag(string tag)
         {
@@ -324,7 +308,7 @@ namespace TwitchCorpse
                 string host = string.Empty;
                 if (!string.IsNullOrWhiteSpace(rawTagsComponent))
                 {
-                    List<string> tagsToIgnore = new() { "client-nonce", "flags" };
+                    List<string> tagsToIgnore = ["client-nonce", "flags"];
                     tags = new();
                     string[] parsedTags = rawTagsComponent.Split(';');
                     foreach (string tag in parsedTags)
@@ -351,7 +335,7 @@ namespace TwitchCorpse
                         {
                             if (!string.IsNullOrWhiteSpace(tagValue))
                             {
-                                Dictionary<string, string> dictEmotes = new();
+                                Dictionary<string, string> dictEmotes = [];
                                 string[] emotes = tagValue.Split('/');
                                 foreach (string emote in emotes)
                                 {

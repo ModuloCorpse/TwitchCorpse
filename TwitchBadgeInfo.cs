@@ -3,7 +3,7 @@ using CorpseLib.Json;
 
 namespace TwitchCorpse
 {
-    public class TwitchBadgeInfo
+    public class TwitchBadgeInfo(string id, string url1x, string url2x, string url4x, string title, string description, string clickAction, string clickURL)
     {
         public class JSerializer : AJSerializer<TwitchBadgeInfo>
         {
@@ -36,14 +36,14 @@ namespace TwitchCorpse
             }
         }
 
-        private readonly string m_ID;
-        private readonly string m_URL1x;
-        private readonly string m_URL2x;
-        private readonly string m_URL4x;
-        private readonly string m_Title;
-        private readonly string m_Description;
-        private readonly string m_ClickAction;
-        private readonly string m_ClickURL;
+        private readonly string m_ID = id;
+        private readonly string m_URL1x = url1x;
+        private readonly string m_URL2x = url2x;
+        private readonly string m_URL4x = url4x;
+        private readonly string m_Title = title;
+        private readonly string m_Description = description;
+        private readonly string m_ClickAction = clickAction;
+        private readonly string m_ClickURL = clickURL;
 
         public string ID => m_ID;
         public string URL1x => m_URL1x;
@@ -53,17 +53,5 @@ namespace TwitchCorpse
         public string Description => m_Description;
         public string ClickAction => m_ClickAction;
         public string ClickURL => m_ClickURL;
-
-        public TwitchBadgeInfo(string id, string url1x, string url2x, string url4x, string title, string description, string clickAction, string clickURL)
-        {
-            m_ID = id;
-            m_URL1x = url1x;
-            m_URL2x = url2x;
-            m_URL4x = url4x;
-            m_Title = title;
-            m_Description = description;
-            m_ClickAction = clickAction;
-            m_ClickURL = clickURL;
-        }
     }
 }

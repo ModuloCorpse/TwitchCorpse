@@ -9,14 +9,14 @@ using static TwitchCorpse.TwitchChatMessage;
 
 namespace TwitchCorpse
 {
-    public class TwitchChat : WebSocketProtocol
+    public partial class TwitchChat : WebSocketProtocol
     {
         public static readonly Logger TWITCH_IRC = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-TwitchIRC.log") };
         public static void StartLogging() => TWITCH_IRC.Start();
         public static void StopLogging() => TWITCH_IRC.Stop();
 
-        private static readonly List<string> ms_Colors = new()
-        {
+        private static readonly List<string> ms_Colors =
+        [
             "#ff0000",
             "#00ff00",
             "#0000ff",
@@ -32,9 +32,9 @@ namespace TwitchCorpse
             "#ff69b4",
             "#8a2be2",
             "#00ff7f"
-        };
+        ];
 
-        private readonly Dictionary<string, TwitchUser> m_LoadedUser = new();
+        private readonly Dictionary<string, TwitchUser> m_LoadedUser = [];
         private readonly ITwitchHandler? m_TwitchHandler;
         private readonly TwitchAPI m_API;
         private readonly TwitchUser? m_SelfUserInfo = null;
@@ -120,7 +120,7 @@ namespace TwitchCorpse
                 return user;
             else
             {
-                List<TwitchBadgeInfo> badges = new();
+                List<TwitchBadgeInfo> badges = [];
                 foreach (string badge in message.GetBadges())
                 {
                     string version = message.GetBadgeVersion(badge);
@@ -205,7 +205,7 @@ namespace TwitchCorpse
                             if (string.IsNullOrEmpty(recipientDisplayName))
                                 recipientDisplayName = recipientName;
                             string recipientID = message.GetTag("msg-param-recipient-id");
-                            recipient = new(recipientID, recipientName, recipientDisplayName, string.Empty, TwitchUser.Type.NONE, new());
+                            recipient = new(recipientID, recipientName, recipientDisplayName, string.Empty, TwitchUser.Type.NONE, []);
                         }
 
                         int monthGifted = int.Parse(message.GetTag("msg-param-gift-months"));
@@ -372,7 +372,7 @@ namespace TwitchCorpse
             {
                 string messageData = message.ToString();
                 if (!messageData.StartsWith("PONG"))
-                    TWITCH_IRC.Log(string.Format("=> {0}", Regex.Replace(messageData.Trim(), "(oauth:).+", "oauth:*****")));
+                    TWITCH_IRC.Log(string.Format("=> {0}", OAuthRegex().Replace(messageData.Trim(), "oauth:*****")));
                 Send(messageData);
             }
             catch (Exception e)
@@ -385,5 +385,8 @@ namespace TwitchCorpse
 
         protected override void OnWSMessage(string message) => TreatReceivedBuffer(message);
         protected override void OnWSClose(int code, string closeMessage) => TWITCH_IRC.Log(string.Format("<=[Error] WebSocket closed ({0}): {1}", code, closeMessage));
+        
+        [GeneratedRegex("(oauth:).+")]
+        private static partial Regex OAuthRegex();
     }
 }

@@ -1,24 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace TwitchCorpse
+﻿namespace TwitchCorpse
 {
-    public class TwitchStreamInfo
+    public class TwitchStreamInfo(TwitchUser user, List<string> tags, string id, string gameID, string gameName, string title, string language, string thumbnailURL, int viewerCount, bool isMature)
     {
-        private readonly List<string> m_Tags;
-        private readonly TwitchUser m_User;
-        private readonly string m_ID;
-        private readonly string m_GameID;
-        private readonly string m_GameName;
-        private readonly string m_Title;
-        private readonly string m_Language;
-        private readonly string m_ThumbnailURL;
-        private readonly int m_ViewerCount;
-        private readonly bool m_IsMature;
-
+        private readonly List<string> m_Tags = tags;
+        private readonly TwitchUser m_User = user;
+        private readonly string m_ID = id;
+        private readonly string m_GameID = gameID;
+        private readonly string m_GameName = gameName;
+        private readonly string m_Title = title;
+        private readonly string m_Language = language;
+        private readonly string m_ThumbnailURL = thumbnailURL;
+        private readonly int m_ViewerCount = viewerCount;
+        private readonly bool m_IsMature = isMature;
         public string ID => m_ID;
         public TwitchUser User => m_User;
         public string GameID => m_GameID;
@@ -29,19 +22,5 @@ namespace TwitchCorpse
         public string Language => m_Language;
         public string ThumbnailURL => m_ThumbnailURL;
         public bool IsMature => m_IsMature;
-
-        public TwitchStreamInfo(TwitchUser user, List<string> tags, string id, string gameID, string gameName, string title, string language, string thumbnailURL, int viewerCount, bool isMature)
-        {
-            m_Tags = tags;
-            m_User = user;
-            m_ID = id;
-            m_GameID = gameID;
-            m_GameName = gameName;
-            m_Title = title;
-            m_Language = language;
-            m_ThumbnailURL = thumbnailURL;
-            m_ViewerCount = viewerCount;
-            m_IsMature = isMature;
-        }
     }
 }
