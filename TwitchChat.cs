@@ -1,9 +1,11 @@
-﻿using CorpseLib.Logging;
+﻿using CorpseLib;
+using CorpseLib.Logging;
 using CorpseLib.Network;
 using CorpseLib.StructuredText;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
 using CorpseLib.Web.OAuth;
+using System.Text;
 using System.Text.RegularExpressions;
 using static TwitchCorpse.TwitchChatMessage;
 
@@ -42,6 +44,7 @@ namespace TwitchCorpse
         private readonly string m_Channel;
         private readonly string m_UserName = string.Empty;
         private string m_ChatColor = string.Empty;
+        private TwitchImage.Theme.Type m_ChatTheme = TwitchImage.Theme.Type.DARK;
 
         public TwitchUser Self => m_SelfUserInfo!;
 
@@ -61,22 +64,137 @@ namespace TwitchCorpse
             return protocol;
         }
 
-        private static Text Convert(TwitchAPI api, string message, List<SimpleEmote> emoteList)
+        private static TwitchCheermote.Tier? SearchCheermote(string str, ref int idx, TwitchCheermote[] cheermotes)
+        {
+            int i = idx;
+            foreach (TwitchCheermote cheermote in cheermotes)
+            {
+                if (str.IndexOf(cheermote.Prefix, i, cheermote.Prefix.Length) == i)
+                {
+                    i += cheermote.Prefix.Length;
+
+                    int cheer = 0;
+                    while (i != str.Length && char.IsNumber(str[i]))
+                    {
+                        cheer = (cheer * 10) + (str[i] - '0');
+                        ++i;
+                    }
+
+                    if (cheer == 0)
+                        return null;
+
+                    if (i == str.Length || char.IsWhiteSpace(str[i]))
+                    {
+                        TwitchCheermote.Tier? currentTier = null;
+                        foreach (TwitchCheermote.Tier tier in cheermote.Tiers)
+                        {
+                            if (tier.CanCheer && cheer >= tier.Threshold)
+                                currentTier = tier;
+                        }
+                        if (currentTier != null)
+                            idx = i;
+                        return currentTier;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private bool TryAddAnimatedImageFromFormat(TwitchImage.Format format, Text text)
+        {
+            if (format.HaveURLs())
+            {
+                for (float scale = 4f; scale != 0; --scale)
+                {
+                    if (format.Have(scale))
+                    {
+                        text.AddAnimatedImage(format[scale]);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private bool TryAddImageFromFormat(TwitchImage.Format format, Text text)
+        {
+            if (format.HaveURLs())
+            {
+                for (float scale = 4f; scale != 0; --scale)
+                {
+                    if (format.Have(scale))
+                    {
+                        text.AddImage(format[scale]);
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private void AddTwitchImage(TwitchImage image, Text text)
+        {
+            if (!TryAddAnimatedImageFromFormat(image[m_ChatTheme][TwitchImage.Format.Type.ANIMATED], text))
+            {
+                if (!TryAddImageFromFormat(image[m_ChatTheme][TwitchImage.Format.Type.STATIC], text))
+                {
+                    TwitchImage.Theme.Type oppositeTheme = (m_ChatTheme == TwitchImage.Theme.Type.DARK) ? TwitchImage.Theme.Type.LIGHT : TwitchImage.Theme.Type.DARK;
+                    if (!TryAddAnimatedImageFromFormat(image[oppositeTheme][TwitchImage.Format.Type.ANIMATED], text))
+                    {
+                        if (!TryAddImageFromFormat(image[oppositeTheme][TwitchImage.Format.Type.STATIC], text))
+                            text.AddText(image.Alt);
+                    }
+                }
+            }
+        }
+
+        private void AddTextToMessage(TwitchAPI api, Text text, string str, bool loadCheermotes)
+        {
+            if (!loadCheermotes)
+            {
+                text.AddText(str);
+                return;
+            }
+
+            TwitchCheermote[] cheermotes = api.GetTwitchCheermotes();
+            StringBuilder builder = new();
+            for (int i = 0; i < str.Length; ++i)
+            {
+                if (i == 0 || str.CharEqual(i - 1, char.IsWhiteSpace))
+                {
+                    TwitchCheermote.Tier? cheermoteTier = SearchCheermote(str, ref i, cheermotes);
+                    if (cheermoteTier != null)
+                    {
+                        text.AddText(builder.ToString());
+                        builder.Clear();
+                        AddTwitchImage(cheermoteTier.Image, text);
+                    }
+                    else
+                        builder.Append(str[i]);
+                }
+                else
+                    builder.Append(str[i]);
+            }
+
+            text.AddText(builder.ToString());
+        }
+
+        private Text Convert(TwitchAPI api, string message, List<SimpleEmote> emoteList, bool loadCheermotes)
         {
             Text ret = new();
             int lastIndex = 0;
             foreach (SimpleEmote emote in emoteList)
             {
-                ret.AddText(message[lastIndex..emote.Start]);
+                AddTextToMessage(api, ret, message[lastIndex..emote.Start], loadCheermotes);
                 TwitchEmoteInfo? emoteInfo = api.GetEmoteFromID(emote.ID);
                 if (emoteInfo != null)
-                    ret.AddImage(api.GetEmoteURL(emote.ID, false, 3, false));
+                    AddTwitchImage(emoteInfo.Image, ret);
                 else
                     ret.AddText(message[emote.Start..(emote.End + 1)]);
                 lastIndex = emote.End + 1;
             }
             if (lastIndex < message.Length)
-                ret.AddText(message[lastIndex..message.Length]);
+                AddTextToMessage(api, ret, message[lastIndex..message.Length], loadCheermotes);
             return ret;
         }
 
@@ -90,6 +208,8 @@ namespace TwitchCorpse
             m_SelfUserInfo = m_API.GetUserInfoOfToken(m_AccessToken);
             m_TwitchHandler = twitchHandler;
         }
+
+        public void SetChatTheme(TwitchImage.Theme.Type theme) => m_ChatTheme = theme;
 
         private void SendAuth()
         {
@@ -138,11 +258,12 @@ namespace TwitchCorpse
 
         private void CreateUserMessage(TwitchChatMessage message, bool highlight, bool self)
         {
+            bool hasGivenBits = message.HaveTag("bits");
             TwitchUser user = LoadUser(message, self);
-            Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes);
+            Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes, hasGivenBits);
             m_TwitchHandler?.OnChatMessage(user, highlight, message.GetTag("id"),
                 GetUserMessageColor(user.DisplayName, self ? m_ChatColor : message.GetTag("color")), displayableMessage);
-            if (message.HaveTag("bits"))
+            if (hasGivenBits)
             {
                 int bits = int.Parse(message.GetTag("bits"));
                 m_TwitchHandler?.OnBits(user, bits, displayableMessage);
@@ -174,7 +295,7 @@ namespace TwitchCorpse
                         int cumulativeMonth = int.Parse(message.GetTag("msg-param-cumulative-months"));
                         bool shareStreakMonth = message.GetTag("msg-param-cumulative-months") == "1";
                         int streakMonth = message.HaveTag("msg-param-streak-months") ? int.Parse(message.GetTag("msg-param-streak-months")) : -1;
-                        Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes);
+                        Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes, false);
                         m_TwitchHandler?.OnSharedSub(user, followTier, cumulativeMonth, shareStreakMonth ? streakMonth : -1, displayableMessage);
                     }
                 }
@@ -210,7 +331,7 @@ namespace TwitchCorpse
 
                         int monthGifted = int.Parse(message.GetTag("msg-param-gift-months"));
                         int cumulativeMonth = int.Parse(message.GetTag("msg-param-months"));
-                        Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes);
+                        Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes, false);
                         m_TwitchHandler?.OnSharedGiftSub(user, recipient, followTier, cumulativeMonth, monthGifted, displayableMessage);
                     }
                 }

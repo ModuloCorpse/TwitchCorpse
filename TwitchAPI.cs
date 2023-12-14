@@ -121,19 +121,42 @@ namespace TwitchCorpse
         private JFile LoadEmoteSetContent(string content)
         {
             JFile responseJson = new(content);
-            List<JObject> datas = responseJson.GetList<JObject>("data");
-            foreach (JObject data in datas)
+            if (responseJson.TryGet("template", out string? template))
             {
-                List<string> format = data.GetList<string>("format");
-                List<string> scale = data.GetList<string>("scale");
-                List<string> themeMode = data.GetList<string>("theme_mode");
-                if (data.TryGet("id", out string? id) &&
-                    data.TryGet("name", out string? name) &&
-                    data.TryGet("emote_type", out string? emoteType) &&
-                    format.Count != 0 && scale.Count != 0 && themeMode.Count != 0)
+                List<JObject> datas = responseJson.GetList<JObject>("data");
+                foreach (JObject data in datas)
                 {
-                    TwitchEmoteInfo info = new(id!, name!, emoteType!, format, scale, themeMode);
-                    m_CachedEmotes[info.ID] = info;
+                    List<string> formats = data.GetList<string>("format");
+                    List<string> scales = data.GetList<string>("scale");
+                    List<string> themeModes = data.GetList<string>("theme_mode");
+                    if (data.TryGet("id", out string? id) &&
+                        data.TryGet("name", out string? name) &&
+                        data.TryGet("emote_type", out string? emoteType) &&
+                        formats.Count != 0 && scales.Count != 0 && themeModes.Count != 0)
+                    {
+                        TwitchImage image = new(name!);
+                        foreach (string themeStr in themeModes)
+                        {
+                            TwitchImage.Theme theme = (themeStr == "dark") ? image[TwitchImage.Theme.Type.DARK] : image[TwitchImage.Theme.Type.LIGHT];
+                            foreach (string formatStr in formats)
+                            {
+                                TwitchImage.Format format = (formatStr == "animated") ? theme[TwitchImage.Format.Type.ANIMATED] : theme[TwitchImage.Format.Type.STATIC];
+                                foreach (string scaleStr in scales)
+                                {
+                                    float scale = 0f;
+                                    if (scaleStr == "1.0")
+                                        scale = 1f;
+                                    else if (scaleStr == "2.0")
+                                        scale = 2f;
+                                    else if (scaleStr == "3.0")
+                                        scale = 4f;
+                                    format[scale] = template!.Replace("{{id}}", id).Replace("{{format}}", formatStr).Replace("{{scale}}", scaleStr).Replace("{{theme_mode}}", themeStr);
+                                }
+                            }
+                        }
+                        TwitchEmoteInfo info = new(image, id!, name!, emoteType!);
+                        m_CachedEmotes[info.ID] = info;
+                    }
                 }
             }
             return responseJson;
@@ -441,6 +464,63 @@ namespace TwitchCorpse
             };
             Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/channels/commercial", json, m_AccessToken);
             return response.StatusCode == 200;
+        }
+
+        public static void LoadCheermoteFormat(JObject obj, TwitchImage.Theme theme, TwitchImage.Format.Type formatType)
+        {
+            TwitchImage.Format format = theme[formatType];
+            if (obj.TryGet("1", out string? url1x))
+                format[1] = url1x!;
+            if (obj.TryGet("1.5", out string? url1x5))
+                format[1.5f] = url1x5!;
+            if (obj.TryGet("2", out string? url2x))
+                format[2] = url2x!;
+            if (obj.TryGet("3", out string? url3x))
+                format[3] = url3x!;
+            if (obj.TryGet("4", out string? url4x))
+                format[4] = url4x!;
+        }
+
+        public static void LoadCheermoteTheme(JObject obj, TwitchImage image, TwitchImage.Theme.Type themeType)
+        {
+            TwitchImage.Theme theme = image[themeType];
+            if (obj.TryGet("animated", out JObject? animated))
+                LoadCheermoteFormat(animated!, theme, TwitchImage.Format.Type.ANIMATED);
+            if (obj.TryGet("static", out JObject? @static))
+                LoadCheermoteFormat(@static!, theme, TwitchImage.Format.Type.STATIC);
+        }
+
+        public TwitchCheermote[] GetTwitchCheermotes()
+        {
+            List<TwitchCheermote> ret = [];
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/bits/cheermotes?broadcaster_id={0}", m_SelfUserInfo.ID), m_AccessToken);
+            if (response.StatusCode == 200)
+            {
+                JFile responseJson = new(response.Body);
+                foreach (JObject data in responseJson.GetList<JObject>("data"))
+                {
+                    if (data.TryGet("prefix", out string? prefix))
+                    {
+                        TwitchCheermote twitchCheermote = new(prefix!);
+                        foreach (JObject tier in data.GetList<JObject>("tiers"))
+                        {
+                            if (tier.TryGet("min_bits", out int? threshold) &&
+                                tier.TryGet("can_cheer", out bool? canCheer) &&
+                                tier.TryGet("images", out JObject? images))
+                            {
+                                TwitchImage image = new(string.Format("{0}{1}", prefix!, threshold));
+                                if (images!.TryGet("dark", out JObject? dark))
+                                    LoadCheermoteTheme(dark!, image, TwitchImage.Theme.Type.DARK);
+                                if (images!.TryGet("light", out JObject? light))
+                                    LoadCheermoteTheme(light!, image, TwitchImage.Theme.Type.LIGHT);
+                                twitchCheermote.AddTier(new(image, (int)threshold!, (bool)canCheer!));
+                            }
+                        }
+                        ret.Add(twitchCheermote);
+                    }
+                }
+            }
+            return [.. ret];
         }
     }
 }
