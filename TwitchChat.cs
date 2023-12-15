@@ -160,7 +160,7 @@ namespace TwitchCorpse
             StringBuilder builder = new();
             for (int i = 0; i < str.Length; ++i)
             {
-                if (i == 0 || str.CharEqual(i - 1, char.IsWhiteSpace))
+                if (i == 0 || char.IsWhiteSpace(str[i - 1]))
                 {
                     TwitchCheermote.Tier? cheermoteTier = SearchCheermote(str, ref i, cheermotes);
                     if (cheermoteTier != null)
