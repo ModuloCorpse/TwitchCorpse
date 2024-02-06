@@ -1,9 +1,14 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib;
+using CorpseLib.Json;
 using CorpseLib.Logging;
 using CorpseLib.Network;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
 using CorpseLib.Web.OAuth;
+using System.Security.Cryptography.X509Certificates;
+using TwitchCorpse.API;
+using static TwitchCorpse.TwitchEventSub;
+using static TwitchCorpse.TwitchImage;
 
 namespace TwitchCorpse
 {
@@ -19,23 +24,107 @@ namespace TwitchCorpse
         private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromID = [];
         private readonly HashSet<string> m_LoadedChannelIDEmoteSets = [];
         private readonly HashSet<string> m_LoadedEmoteSets = [];
-        private readonly RefreshToken m_AccessToken;
-        private readonly TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
+        private RefreshToken? m_AccessToken = null;
+        private TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
+        private ITwitchHandler? m_Handler;
+        private readonly string[] m_Scopes = [
+            "bits:read",
+            "channel:bot",
+            "channel:manage:broadcast",
+            "channel:manage:moderators",
+            "channel:manage:polls",
+            "channel:manage:redemptions",
+            "channel:moderate",
+            "channel:read:polls",
+            "channel:read:redemptions",
+            "channel:read:subscriptions",
+            "chat:read",
+            "chat:edit",
+            "moderator:manage:automod",
+            "moderator:read:automod_settings",
+            "moderator:read:followers",
+            "moderator:manage:banned_users",
+            "moderator:manage:blocked_terms",
+            "moderator:manage:chat_messages",
+            "moderator:manage:shoutouts",
+            "moderation:read",
+            "user:bot",
+            "user:read:chat",
+            "user:read:email",
+            "user:write:chat",
+            "whispers:read"
+        ];
         private string m_EmoteURLTemplate = string.Empty;
+        private bool m_IsAuthenticated = false;
 
-        public TwitchAPI(RefreshToken accessToken)
+        public bool IsAuthenticated => m_IsAuthenticated;
+
+        public TwitchAPI() => m_Handler = null;
+        public TwitchAPI(ITwitchHandler handler) => m_Handler = handler;
+
+        public void SetHandler(ITwitchHandler handler) => m_Handler = handler;
+
+        public void Authenticate(string publicKey, string privateKey, int port) => AuthenticateWithBrowser(publicKey, privateKey, port, string.Empty, string.Empty);
+
+        public void Authenticate(string publicKey, string privateKey, int port, string pageContent) => AuthenticateWithBrowser(publicKey, privateKey, port, pageContent, string.Empty);
+
+        public void AuthenticateWithBrowser(string publicKey, string privateKey, int port, string browser) => AuthenticateWithBrowser(publicKey, privateKey, port, string.Empty, browser);
+
+        public void AuthenticateWithBrowser(string publicKey, string privateKey, int port, string pageContent, string browser)
         {
-            m_AccessToken = accessToken;
-            Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/users", accessToken);
-            if (response.StatusCode == 200)
+            Authenticator authenticator = new("id.twitch.tv", string.Empty, port);
+            authenticator.SetPageContent(pageContent);
+            OperationResult<RefreshToken> result = authenticator.AuthorizationCode(m_Scopes, publicKey, privateKey, browser);
+            if (result)
             {
-                TwitchUser? user = GetUserInfo(response.Body, TwitchUser.Type.BROADCASTER);
-                if (user != null)
+                m_AccessToken = result.Result!;
+                Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/users", m_AccessToken);
+                if (response.StatusCode == 200)
                 {
-                    m_SelfUserInfo = user;
-                    LoadChannelEmoteSet(user);
+                    TwitchUser? user = GetUserInfo(response.Body, TwitchUser.Type.BROADCASTER);
+                    if (user != null)
+                    {
+                        m_SelfUserInfo = user;
+                        LoadChannelEmoteSet(user);
+                        m_IsAuthenticated = true;
+                    }
                 }
             }
+        }
+
+        public TwitchPubSub? PubSubConnection(string channelID)
+        {
+            if (m_AccessToken == null)
+                return null;
+            TwitchPubSub protocol = new(this, m_AccessToken, channelID, m_Handler);
+            TCPAsyncClient twitchPubSubClient = new(protocol, URI.Parse("wss://pubsub-edge.twitch.tv"));
+            twitchPubSubClient.Start();
+            return protocol;
+        }
+
+        public TwitchEventSub? EventSubConnection(string channelID)
+        {
+            if (m_AccessToken == null)
+                return null;
+            return new(this, channelID, m_AccessToken, m_Handler);
+        }
+
+        public TwitchEventSub? EventSubConnection(string channelID, SubscriptionType[] subscriptionTypes)
+        {
+            if (m_AccessToken == null)
+                return null;
+            return new(this, channelID, m_AccessToken, subscriptionTypes, m_Handler);
+        }
+
+        public TwitchChat? ChatConnection(string channel, string username)
+        {
+            if (m_AccessToken == null)
+                return null;
+            TwitchChat protocol = new(this, channel, username, m_AccessToken, m_Handler);
+            TCPAsyncClient twitchIRCClient = new(protocol, URI.Parse("wss://irc-ws.chat.twitch.tv:443"));
+            twitchIRCClient.EnableSelfReconnection();
+            twitchIRCClient.Start();
+            return protocol;
         }
 
         private static Response SendComposedRequest(URLRequest request, RefreshToken? token)
@@ -54,7 +143,7 @@ namespace TwitchCorpse
             return response;
         }
 
-        private static Response SendRequest(Request.MethodType method, string url, JFile content, RefreshToken? token)
+        private static Response SendRequest(Request.MethodType method, string url, JObject content, RefreshToken? token)
         {
             URLRequest request = new(URI.Parse(url), method, content.ToNetworkString());
             request.AddContentType(MIME.APPLICATION.JSON);
@@ -137,10 +226,10 @@ namespace TwitchCorpse
                         TwitchImage image = new(name!);
                         foreach (string themeStr in themeModes)
                         {
-                            TwitchImage.Theme theme = (themeStr == "dark") ? image[TwitchImage.Theme.Type.DARK] : image[TwitchImage.Theme.Type.LIGHT];
+                            Theme theme = (themeStr == "dark") ? image[Theme.Type.DARK] : image[Theme.Type.LIGHT];
                             foreach (string formatStr in formats)
                             {
-                                TwitchImage.Format format = (formatStr == "animated") ? theme[TwitchImage.Format.Type.ANIMATED] : theme[TwitchImage.Format.Type.STATIC];
+                                Format format = (formatStr == "animated") ? theme[Format.Type.ANIMATED] : theme[Format.Type.STATIC];
                                 foreach (string scaleStr in scales)
                                 {
                                     float scale = 0f;
@@ -226,6 +315,41 @@ namespace TwitchCorpse
             return null;
         }
 
+        private static bool IsURLValid(string url)
+        {
+            Response response = new URLRequest(URI.Parse(url)).Send(TimeSpan.FromSeconds(10));
+            return response.StatusCode == 200;
+        }
+
+        public TwitchEmoteInfo? TryCreateEmoteInfo(string id, string name)
+        {
+            string staticUrl = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "static").Replace("{{scale}}", "1.0").Replace("{{theme_mode}}", "dark");
+            if (IsURLValid(staticUrl))
+            {
+                TwitchImage image = new(name);
+                image[Theme.Type.DARK][Format.Type.STATIC][1f] = staticUrl;
+                image[Theme.Type.DARK][Format.Type.STATIC][2f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "static").Replace("{{scale}}", "2.0").Replace("{{theme_mode}}", "dark");
+                image[Theme.Type.DARK][Format.Type.STATIC][4f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "static").Replace("{{scale}}", "3.0").Replace("{{theme_mode}}", "dark");
+                image[Theme.Type.LIGHT][Format.Type.STATIC][1f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "static").Replace("{{scale}}", "1.0").Replace("{{theme_mode}}", "light");
+                image[Theme.Type.LIGHT][Format.Type.STATIC][2f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "static").Replace("{{scale}}", "2.0").Replace("{{theme_mode}}", "light");
+                image[Theme.Type.LIGHT][Format.Type.STATIC][4f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "static").Replace("{{scale}}", "3.0").Replace("{{theme_mode}}", "light");
+                string animatedUrl = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "animated").Replace("{{scale}}", "1.0").Replace("{{theme_mode}}", "dark");
+                if (IsURLValid(animatedUrl))
+                {
+                    image[Theme.Type.DARK][Format.Type.ANIMATED][1f] = animatedUrl;
+                    image[Theme.Type.DARK][Format.Type.ANIMATED][2f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "animated").Replace("{{scale}}", "2.0").Replace("{{theme_mode}}", "dark");
+                    image[Theme.Type.DARK][Format.Type.ANIMATED][4f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "animated").Replace("{{scale}}", "3.0").Replace("{{theme_mode}}", "dark");
+                    image[Theme.Type.LIGHT][Format.Type.ANIMATED][1f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "animated").Replace("{{scale}}", "1.0").Replace("{{theme_mode}}", "light");
+                    image[Theme.Type.LIGHT][Format.Type.ANIMATED][2f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "animated").Replace("{{scale}}", "2.0").Replace("{{theme_mode}}", "light");
+                    image[Theme.Type.LIGHT][Format.Type.ANIMATED][4f] = m_EmoteURLTemplate.Replace("{{id}}", id).Replace("{{format}}", "animated").Replace("{{scale}}", "3.0").Replace("{{theme_mode}}", "light");
+                }
+                TwitchEmoteInfo info = new(image, id, name, string.Empty);
+                m_CachedEmotes[info.ID] = info;
+                return info;
+            }
+            return null;
+        }
+
         public TwitchUser.Type GetUserType(bool self, bool mod, string type, string id)
         {
             TwitchUser.Type userType = TwitchUser.Type.NONE;
@@ -308,32 +432,50 @@ namespace TwitchCorpse
             return null;
         }
 
-        public string GetUserProfilePictureFromLogin(string login) => GetUserInfoFromLogin(login)?.ProfileImageURL ?? string.Empty;
+        public TwitchUser? GetUserInfoFromID(string id)
+        {
+            TwitchUser? userInfo = (m_CachedUserInfoFromID.TryGetValue(id, out TwitchUser? info)) ? info : null; ;
+            if (userInfo != null)
+                return userInfo;
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users?id={0}", id), m_AccessToken);
+            if (response.StatusCode == 200)
+            {
+                TwitchUser? ret = GetUserInfo(response.Body, null);
+                if (ret != null)
+                {
+                    m_CachedUserInfoFromID[ret.ID] = ret;
+                    m_CachedUserInfoFromLogin[ret.Name] = ret;
+                }
+                return ret;
+            }
+            return null;
+        }
+
+        public TwitchChannelInfo? GetChannelInfo(TwitchUser user)
+        {
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), m_AccessToken);
+            if (response.StatusCode == 200)
+            {
+                JFile responseJson = new(response.Body);
+                List<JObject> datas = responseJson.GetList<JObject>("data");
+                if (datas.Count > 0)
+                {
+                    JObject data = datas[0];
+                    if (data.TryGet("game_id", out string? gameID) &&
+                        data.TryGet("game_name", out string? gameName) &&
+                        data.TryGet("title", out string? title) &&
+                        data.TryGet("broadcaster_language", out string? language))
+                        return new TwitchChannelInfo(user, gameID!, gameName!, title!, language!);
+                }
+            }
+            return null;
+        }
 
         public TwitchChannelInfo? GetChannelInfo(string login)
         {
-            TwitchChannelInfo? channelInfo = null;
-            if (channelInfo != null)
-                return channelInfo;
             TwitchUser? broadcasterInfo = GetUserInfoFromLogin(login);
             if (broadcasterInfo != null)
-            {
-                Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", broadcasterInfo.ID), m_AccessToken);
-                if (response.StatusCode == 200)
-                {
-                    JFile responseJson = new(response.Body);
-                    List<JObject> datas = responseJson.GetList<JObject>("data");
-                    if (datas.Count > 0)
-                    {
-                        JObject data = datas[0];
-                        if (data.TryGet("game_id", out string? gameID) &&
-                            data.TryGet("game_name", out string? gameName) &&
-                            data.TryGet("title", out string? title) &&
-                            data.TryGet("broadcaster_language", out string? language))
-                            return new TwitchChannelInfo(broadcasterInfo, gameID!, gameName!, title!, language!);
-                    }
-                }
-            }
+                return GetChannelInfo(broadcasterInfo);
             return null;
         }
 
@@ -341,7 +483,7 @@ namespace TwitchCorpse
         {
             if (string.IsNullOrEmpty(title) && string.IsNullOrEmpty(gameID) && string.IsNullOrEmpty(language))
                 return false;
-            JFile body = [];
+            JObject body = [];
             if (!string.IsNullOrEmpty(title))
                 body.Add("title", title);
             if (!string.IsNullOrEmpty(gameID))
@@ -392,7 +534,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JFile json = new()
+            JObject json = new()
             {
                 { "user_id", m_SelfUserInfo.ID },
                 { "msg_id", messageID },
@@ -406,15 +548,17 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JFile json = [];
-            JFile data = new()
+            JObject data = new()
             {
-                { "user_id", user.ID }
+                { "user_id", user.ID },
+                { "reason", reason }
             };
             if (duration > 0)
                 data.Add("duration", duration);
-            data.Add("reason", reason);
-            json.Add("data", data);
+            JObject json = new()
+            {
+                { "data", data }
+            };
             Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={0}", m_SelfUserInfo.ID), json, m_AccessToken);
             return response.StatusCode == 204;
         }
@@ -457,7 +601,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JFile json = new()
+            JObject json = new()
             {
                 { "broadcaster_id", m_SelfUserInfo.ID },
                 { "length", duration }
@@ -466,9 +610,9 @@ namespace TwitchCorpse
             return response.StatusCode == 200;
         }
 
-        public static void LoadCheermoteFormat(JObject obj, TwitchImage.Theme theme, TwitchImage.Format.Type formatType)
+        public static void LoadCheermoteFormat(JObject obj, Theme theme, Format.Type formatType)
         {
-            TwitchImage.Format format = theme[formatType];
+            Format format = theme[formatType];
             if (obj.TryGet("1", out string? url1x))
                 format[1] = url1x!;
             if (obj.TryGet("1.5", out string? url1x5))
@@ -481,13 +625,13 @@ namespace TwitchCorpse
                 format[4] = url4x!;
         }
 
-        public static void LoadCheermoteTheme(JObject obj, TwitchImage image, TwitchImage.Theme.Type themeType)
+        public static void LoadCheermoteTheme(JObject obj, TwitchImage image, Theme.Type themeType)
         {
-            TwitchImage.Theme theme = image[themeType];
+            Theme theme = image[themeType];
             if (obj.TryGet("animated", out JObject? animated))
-                LoadCheermoteFormat(animated!, theme, TwitchImage.Format.Type.ANIMATED);
+                LoadCheermoteFormat(animated!, theme, Format.Type.ANIMATED);
             if (obj.TryGet("static", out JObject? @static))
-                LoadCheermoteFormat(@static!, theme, TwitchImage.Format.Type.STATIC);
+                LoadCheermoteFormat(@static!, theme, Format.Type.STATIC);
         }
 
         public TwitchCheermote[] GetTwitchCheermotes()
@@ -521,6 +665,43 @@ namespace TwitchCorpse
                 }
             }
             return [.. ret];
+        }
+
+        private string PostChatMessage(JObject chatMessage)
+        {
+            Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/chat/messages", chatMessage, m_AccessToken);
+            if (response.StatusCode == 200)
+            {
+                JFile responseJson = new(response.Body);
+                foreach (JObject data in responseJson.GetList<JObject>("data"))
+                {
+                    if (data.TryGet("is_sent", out bool? isSent) && (bool)isSent! &&
+                        data.TryGet("message_id", out string? id))
+                        return id!;
+                }
+            }
+            return string.Empty;
+        }
+
+        public string PostMessage(TwitchUser broadcaster, string message)
+        {
+            return PostChatMessage(new()
+            {
+                { "broadcaster_id", broadcaster.ID },
+                { "sender_id", m_SelfUserInfo.ID },
+                { "message", message }
+            });
+        }
+
+        public string ReplyMessage(TwitchUser broadcaster, string message, string replyMessageID)
+        {
+            return PostChatMessage(new()
+            {
+                { "broadcaster_id", broadcaster.ID },
+                { "sender_id", m_SelfUserInfo.ID },
+                { "message", message },
+                { "reply_parent_message_id", replyMessageID }
+            });
         }
     }
 }

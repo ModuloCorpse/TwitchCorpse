@@ -1,5 +1,4 @@
-﻿using CorpseLib;
-using CorpseLib.Logging;
+﻿using CorpseLib.Logging;
 using CorpseLib.Network;
 using CorpseLib.StructuredText;
 using CorpseLib.Web;
@@ -7,6 +6,7 @@ using CorpseLib.Web.Http;
 using CorpseLib.Web.OAuth;
 using System.Text;
 using System.Text.RegularExpressions;
+using TwitchCorpse.API;
 using static TwitchCorpse.TwitchChatMessage;
 
 namespace TwitchCorpse
@@ -48,28 +48,12 @@ namespace TwitchCorpse
 
         public TwitchUser Self => m_SelfUserInfo!;
 
-        public static TwitchChat NewConnection(TwitchAPI api, string channel, string username, RefreshToken token, ITwitchHandler twitchHandler)
-        {
-            TwitchChat protocol = new(api, channel, username, token, twitchHandler);
-            TCPAsyncClient twitchIRCClient = new(protocol, URI.Parse("wss://irc-ws.chat.twitch.tv:443"));
-            twitchIRCClient.Start();
-            return protocol;
-        }
-
-        public static TwitchChat NewConnection(TwitchAPI api, string channel, string username, RefreshToken token)
-        {
-            TwitchChat protocol = new(api, channel, username, token, null);
-            TCPAsyncClient twitchIRCClient = new(protocol, URI.Parse("wss://irc-ws.chat.twitch.tv:443"));
-            twitchIRCClient.Start();
-            return protocol;
-        }
-
         private static TwitchCheermote.Tier? SearchCheermote(string str, ref int idx, TwitchCheermote[] cheermotes)
         {
             int i = idx;
             foreach (TwitchCheermote cheermote in cheermotes)
             {
-                if (str.IndexOf(cheermote.Prefix, i, cheermote.Prefix.Length) == i)
+                if ((i + cheermote.Prefix.Length) < str.Length && str.IndexOf(cheermote.Prefix, i, cheermote.Prefix.Length) == i)
                 {
                     i += cheermote.Prefix.Length;
 
@@ -150,6 +134,8 @@ namespace TwitchCorpse
 
         private void AddTextToMessage(TwitchAPI api, Text text, string str, bool loadCheermotes)
         {
+            if (string.IsNullOrEmpty(str))
+                return;
             if (!loadCheermotes)
             {
                 text.AddText(str);
@@ -186,7 +172,7 @@ namespace TwitchCorpse
             foreach (SimpleEmote emote in emoteList)
             {
                 AddTextToMessage(api, ret, message[lastIndex..emote.Start], loadCheermotes);
-                TwitchEmoteInfo? emoteInfo = api.GetEmoteFromID(emote.ID);
+                TwitchEmoteInfo? emoteInfo = api.GetEmoteFromID(emote.ID) ?? api.TryCreateEmoteInfo(emote.ID, message[emote.Start..(emote.End + 1)]);
                 if (emoteInfo != null)
                     AddTwitchImage(emoteInfo.Image, ret);
                 else
@@ -198,7 +184,7 @@ namespace TwitchCorpse
             return ret;
         }
 
-        private TwitchChat(TwitchAPI api, string channel, string username, RefreshToken token, ITwitchHandler? twitchHandler)
+        internal TwitchChat(TwitchAPI api, string channel, string username, RefreshToken token, ITwitchHandler? twitchHandler)
         {
             m_API = api;
             m_Channel = channel;
@@ -318,7 +304,7 @@ namespace TwitchCorpse
                         }
                         TwitchUser user = LoadUser(message, false);
 
-                        string userID = message.GetTag("user-id");
+                        string userID = message.GetTag("msg-param-recipient-id");
                         if (!m_LoadedUser.TryGetValue(userID, out TwitchUser? recipient))
                         {
                             string recipientName = message.GetTag("msg-param-recipient-user-name");
@@ -500,6 +486,11 @@ namespace TwitchCorpse
             {
                 TWITCH_IRC.Log(string.Format("On send exception: {0}", e));
             }
+        }
+
+        protected override void OnDiscardException(Exception exception)
+        {
+            TWITCH_IRC.Log(exception.ToString());
         }
 
         protected override void OnWSOpen(Response _) => SendAuth();

@@ -24,22 +24,6 @@ namespace TwitchCorpse
         private long m_TimeSinceLastPing = 0;
         private long m_TimeBeforeNextPing = (new Random().Next(-15, 15) + 135) * 1000;
 
-        public static TwitchPubSub NewConnection(string channelID, TwitchAPI api, Token token, ITwitchHandler twitchHandler)
-        {
-            TwitchPubSub protocol = new(api, token, channelID, twitchHandler);
-            TCPAsyncClient twitchPubSubClient = new(protocol, URI.Parse("wss://pubsub-edge.twitch.tv"));
-            twitchPubSubClient.Start();
-            return protocol;
-        }
-
-        public static TwitchPubSub NewConnection(string channelID, TwitchAPI api, Token token)
-        {
-            TwitchPubSub protocol = new(api, token, channelID, null);
-            TCPAsyncClient twitchPubSubClient = new(protocol, URI.Parse("wss://pubsub-edge.twitch.tv"));
-            twitchPubSubClient.Start();
-            return protocol;
-        }
-
         protected override void OnWSOpen(Response response)
         {
             PUBSUB.Log("<= Listening to automod-queue");
@@ -54,7 +38,7 @@ namespace TwitchCorpse
                 { "auth_token", m_Token.AccessToken }
             };
             json.Add("data", data);
-            Send(json.ToNetworkString());
+            ForceSend(json.ToNetworkString());
             m_Watch.Start();
             _ = RunUpdateInBackground();
         }
@@ -106,24 +90,24 @@ namespace TwitchCorpse
                 switch (type)
                 {
                     case "RECONNECT":
-                        {
-                            Reconnect();
-                            break;
-                        }
+                    {
+                        Reconnect();
+                        break;
+                    }
                     case "MESSAGE":
+                    {
+                        if (receivedEvent.TryGet("data", out JObject? data))
                         {
-                            if (receivedEvent.TryGet("data", out JObject? data))
+                            if (data!.TryGet("topic", out string? topic) &&
+                                data.TryGet("message", out string? messageDataStr))
                             {
-                                if (data!.TryGet("topic", out string? topic) &&
-                                    data.TryGet("message", out string? messageDataStr))
-                                {
-                                    JFile messageData = new(messageDataStr!);
-                                    if (topic!.StartsWith("automod-queue"))
-                                        HandleAutoModQueueData(messageData!);
-                                }
+                                JFile messageData = new(messageDataStr!);
+                                if (topic!.StartsWith("automod-queue"))
+                                    HandleAutoModQueueData(messageData!);
                             }
-                            break;
                         }
+                        break;
+                    }
                 }
             }
         }
@@ -140,7 +124,7 @@ namespace TwitchCorpse
                 if (m_TimeSinceLastPing >= m_TimeBeforeNextPing)
                 {
                     PUBSUB.Log("=> PING");
-                    Send("{\"type\": \"PING\"}");
+                    ForceSend("{\"type\": \"PING\"}");
                     m_TimeSinceLastPing = 0;
                     m_TimeBeforeNextPing = (new Random().Next(-15, 15) + 135) * 1000; //2"15 +/- 15 seconds
                 }
@@ -157,6 +141,11 @@ namespace TwitchCorpse
         protected override void OnClientDisconnected()
         {
             PUBSUB.Log("<= Disconnected");
+        }
+
+        protected override void OnDiscardException(Exception exception)
+        {
+            PUBSUB.Log(exception.ToString());
         }
     }
 }

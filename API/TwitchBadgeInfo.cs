@@ -1,7 +1,7 @@
 ﻿using CorpseLib;
 using CorpseLib.Json;
 
-namespace TwitchCorpse
+namespace TwitchCorpse.API
 {
     public class TwitchBadgeInfo(string id, string url1x, string url2x, string url4x, string title, string description, string clickAction, string clickURL)
     {

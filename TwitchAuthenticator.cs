@@ -7,6 +7,7 @@ namespace TwitchCorpse
     {
         private readonly List<string> m_Scopes = [
             "bits:read",
+            "channel:bot",
             "channel:manage:broadcast",
             "channel:manage:moderators",
             "channel:manage:polls",
@@ -25,7 +26,10 @@ namespace TwitchCorpse
             "moderator:manage:chat_messages",
             "moderator:manage:shoutouts",
             "moderation:read",
+            "user:bot",
+            "user:read:chat",
             "user:read:email",
+            "user:write:chat",
             "whispers:read"
         ];
 

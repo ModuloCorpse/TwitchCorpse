@@ -1,4 +1,4 @@
-﻿namespace TwitchCorpse
+﻿namespace TwitchCorpse.API
 {
     public class TwitchCategoryInfo(string id, string name, string imageURL)
     {

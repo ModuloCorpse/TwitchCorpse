@@ -14,7 +14,7 @@ namespace TwitchCorpse
         public void OnFollow(TwitchUser user);
         public void OnGiftSub(TwitchUser? user, int tier, int nbGift);
         public void OnSub(TwitchUser user, int tier, bool isGift);
-        public void OnSharedGiftSub(TwitchUser user, TwitchUser recipient, int tier, int monthGifted, int monthStreak, Text message);
+        public void OnSharedGiftSub(TwitchUser? gifter, TwitchUser user, int tier, int monthGifted, int monthStreak, Text message);
         public void OnSharedSub(TwitchUser user, int tier, int monthTotal, int monthStreak, Text message);
         public void OnReward(TwitchUser user, string reward, string input);
         public void OnRaided(TwitchUser user, int nbViewer);
