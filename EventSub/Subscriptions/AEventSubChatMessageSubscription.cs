@@ -1,5 +1,6 @@
 ﻿using CorpseLib.Json;
 using CorpseLib.StructuredText;
+using TwitchCorpse.API;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
@@ -170,17 +171,32 @@ namespace TwitchCorpse.EventSub.Subscriptions
             user = null;
             if (data.TryGet("chatter_user_id", out string? userID))
             {
-                user = m_API.GetUserInfoFromID(userID!);
-                if (user == null)
+                TwitchUser? foundUser = m_API.GetUserInfoFromID(userID!);
+                if (foundUser == null)
                     return false;
                 if (!data.TryGet("color", out color) || string.IsNullOrEmpty(color))
                 {
                     int colorIdx = 0;
-                    foreach (char c in user.Name)
+                    foreach (char c in foundUser.Name)
                         colorIdx += c;
                     colorIdx %= ms_Colors.Count;
                     color = ms_Colors[colorIdx];
                 }
+
+                List<JObject> badges = data.GetList<JObject>("badges");
+                List<TwitchBadgeInfo> userBadges = [];
+                foreach (JObject badge in badges)
+                {
+                    if (badge.TryGet("set_id", out string? setID) && setID != null &&
+                        badge.TryGet("id", out string? id) && id != null)
+                    {
+                        TwitchBadgeInfo? badgeInfo = m_API.GetBadge(setID, id);
+                        if (badgeInfo != null)
+                            userBadges.Add(badgeInfo);
+                    }
+                }
+
+                user = foundUser.ChatUser(userBadges);
                 return true;
             }
             return false;

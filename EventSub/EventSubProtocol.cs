@@ -13,17 +13,18 @@ namespace TwitchCorpse.EventSub
     {
         internal static readonly Logger EVENTSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-EventSub.log") };
 
+        private readonly TreatedEventBuffer m_TreatedEventBuffer;
         internal EventHandler? OnWelcome;
         internal EventHandler? OnReconnect;
+        internal EventHandler? OnUnwantedDisconnect;
         private readonly ITwitchHandler? m_TwitchHandler;
         private readonly Token m_Token;
-        private readonly List<string> m_TreatedBuffer = [];
         private readonly Dictionary<string, AEventSubSubscription> m_Subscriptions = [];
         private readonly string m_ChannelID;
-        private static readonly int ms_TreatedBufferSize = 10;
 
-        public EventSubProtocol(TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler, SubscriptionType[] subscriptionTypes) : base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) }})
+        public EventSubProtocol(TreatedEventBuffer treatedEventBuffer, TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler, SubscriptionType[] subscriptionTypes) : base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) }})
         {
+            m_TreatedEventBuffer = treatedEventBuffer;
             m_TwitchHandler = twitchHandler;
             m_Token = token;
             m_ChannelID = channelID;
@@ -60,7 +61,13 @@ namespace TwitchCorpse.EventSub
 
         protected override void OnWSClose(int status, string message)
         {
-            EVENTSUB.Log(string.Format("WS Close ({0}) : {1}", status, message));
+            if (status == 4002)
+            {
+                OnUnwantedDisconnect?.Invoke(this, EventArgs.Empty);
+                EVENTSUB.Log("WS Close (4002) : Ping pong failuere");
+            }
+            else
+                EVENTSUB.Log(string.Format("WS Close ({0}) : {1}", status, message));
         }
 
         protected override void OnWSMessage(string message)
@@ -71,12 +78,8 @@ namespace TwitchCorpse.EventSub
             if (eventMessage.TryGet("metadata", out JObject? metadataObj) && eventMessage.TryGet("payload", out JObject? payload))
             {
                 Metadata metadata = new(metadataObj!);
-                if (!m_TreatedBuffer.Contains(metadata.ID))
+                if (m_TreatedEventBuffer.PushEventID(metadata.ID))
                 {
-                    m_TreatedBuffer.Add(metadata.ID);
-                    int delta = m_TreatedBuffer.Count - ms_TreatedBufferSize;
-                    if (delta > 0)
-                        m_TreatedBuffer.RemoveRange(0, delta);
                     switch (metadata.Type)
                     {
                         case "session_welcome":

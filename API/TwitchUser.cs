@@ -1,6 +1,7 @@
 ﻿using CorpseLib.Json;
 using CorpseLib;
 using TwitchCorpse.API;
+using System.Collections.Generic;
 
 namespace TwitchCorpse
 {
@@ -48,7 +49,7 @@ namespace TwitchCorpse
         private readonly string m_ProfileImageURL = profileImageURL;
         private readonly Type m_UserType = userType;
 
-        public TwitchBadgeInfo[] Badges => m_Badges.ToArray();
+        public TwitchBadgeInfo[] Badges => [.. m_Badges];
         public string ID => m_ID;
         public string Name => m_Name;
         public string DisplayName => m_DisplayName;
@@ -56,5 +57,10 @@ namespace TwitchCorpse
         public Type UserType => m_UserType;
 
         internal TwitchUser(Type userType) : this(string.Empty, string.Empty, string.Empty, string.Empty, userType, []) {}
+
+        public TwitchUser ChatUser(List<TwitchBadgeInfo> badges)
+        {
+            return new(m_ID, m_Name, m_DisplayName, m_ProfileImageURL, m_UserType, badges);
+        }
     }
 }

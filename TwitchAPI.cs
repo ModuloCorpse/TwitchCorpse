@@ -18,7 +18,7 @@ namespace TwitchCorpse
         public static void StartLogging() => TWITCH_API.Start();
         public static void StopLogging() => TWITCH_API.Stop();
 
-        private readonly Dictionary<string, Dictionary<string, TwitchBadgeInfo>> m_CachedBadges = [];
+        private readonly Dictionary<string, Dictionary<string, TwitchBadgeInfo>> m_BadgeSets = [];
         private readonly Dictionary<string, TwitchEmoteInfo> m_CachedEmotes = [];
         private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromLogin = [];
         private readonly Dictionary<string, TwitchUser> m_CachedUserInfoFromID = [];
@@ -173,9 +173,9 @@ namespace TwitchCorpse
                             version.TryGet("click_url", out string? clickURL))
                         {
                             TwitchBadgeInfo badgeInfo = new(id!, url1x!, url2x!, url4x!, title!, description!, clickAction!, clickURL ?? string.Empty);
-                            if (!m_CachedBadges.ContainsKey(setID!))
-                                m_CachedBadges[setID!] = [];
-                            m_CachedBadges[setID!][badgeInfo.ID] = badgeInfo;
+                            if (!m_BadgeSets.ContainsKey(setID!))
+                                m_BadgeSets[setID!] = [];
+                            m_BadgeSets[setID!][badgeInfo.ID] = badgeInfo;
                         }
                     }
                 }
@@ -199,7 +199,7 @@ namespace TwitchCorpse
 
         public TwitchBadgeInfo? GetBadge(string badge, string id)
         {
-            if (m_CachedBadges.TryGetValue(badge, out Dictionary<string, TwitchBadgeInfo>? badgesInfo))
+            if (m_BadgeSets.TryGetValue(badge, out Dictionary<string, TwitchBadgeInfo>? badgesInfo))
             {
                 if (badgesInfo.TryGetValue(id, out TwitchBadgeInfo? badgeInfo))
                     return badgeInfo;

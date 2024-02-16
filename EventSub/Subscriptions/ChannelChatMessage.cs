@@ -15,7 +15,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                     data.TryGet("message", out JObject? message))
                 {
                     Text chatMessage = ConvertFragments(message!.GetList<JObject>("fragments"));
-                    Handler?.OnChatMessage(user!, (messageType == "channel_points_highlighted"), messageID!, color!, chatMessage);
+                    Handler?.OnChatMessage(user!, (messageType == "channel_points_highlighted"), messageID!, string.Empty, color!, chatMessage);
 
                     if (data.TryGet("cheer", out JObject? cheer) && cheer != null && cheer.TryGet("bits", out int? bits))
                         Handler?.OnBits(user!, (int)bits!, chatMessage);

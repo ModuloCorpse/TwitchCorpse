@@ -31,6 +31,7 @@ namespace TwitchCorpse
         public static void StartLogging() => EventSubProtocol.EVENTSUB.Start();
         public static void StopLogging() => EventSubProtocol.EVENTSUB.Stop();
 
+        private readonly TreatedEventBuffer m_TreatedEventBuffer = new(10);
         public EventHandler? OnWelcome;
         private readonly TwitchAPI m_API;
         private IMonitor? m_Monitor = null;
@@ -67,11 +68,12 @@ namespace TwitchCorpse
             m_ChannelID = channelID;
             m_SubscriptionTypes = subscriptionTypes;
             m_Protocol = NewProtocol(true);
+            m_Protocol.OnUnwantedDisconnect += HandleMainClientDisconnect;
         }
 
         private EventSubProtocol NewProtocol(bool firstConnection)
         {
-            EventSubProtocol protocol = new(m_API, m_ChannelID, m_Token, m_Handler, m_SubscriptionTypes);
+            EventSubProtocol protocol = new(m_TreatedEventBuffer, m_API, m_ChannelID, m_Token, m_Handler, m_SubscriptionTypes);
             TCPAsyncClient client = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
             client.Start();
             if (firstConnection)
@@ -80,6 +82,12 @@ namespace TwitchCorpse
             if (m_Monitor != null)
                 protocol.SetMonitor(m_Monitor);
             return protocol;
+        }
+
+        private void HandleMainClientDisconnect(object? _, EventArgs e)
+        {
+            m_Protocol = NewProtocol(false);
+            m_Protocol.OnUnwantedDisconnect += HandleMainClientDisconnect;
         }
 
         private void HandleClientReconnect(object? _, EventArgs e)
@@ -93,6 +101,7 @@ namespace TwitchCorpse
         {
             m_Protocol?.Disconnect();
             m_Protocol = m_ReconnectProtocol;
+            m_Protocol!.OnUnwantedDisconnect += HandleMainClientDisconnect;
             m_ReconnectProtocol!.OnWelcome -= HandleReconnectWelcome;
         }
 

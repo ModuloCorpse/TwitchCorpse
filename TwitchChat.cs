@@ -1,5 +1,4 @@
 ﻿using CorpseLib.Logging;
-using CorpseLib.Network;
 using CorpseLib.StructuredText;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
@@ -7,7 +6,7 @@ using CorpseLib.Web.OAuth;
 using System.Text;
 using System.Text.RegularExpressions;
 using TwitchCorpse.API;
-using static TwitchCorpse.TwitchChatMessage;
+using static TwitchCorpse.TwitchReceivedChatMessage;
 
 namespace TwitchCorpse
 {
@@ -19,21 +18,21 @@ namespace TwitchCorpse
 
         private static readonly List<string> ms_Colors =
         [
-            "#ff0000",
-            "#00ff00",
-            "#0000ff",
-            "#b22222",
-            "#ff7f50",
-            "#9acd32",
-            "#ff4500",
-            "#2e8b57",
-            "#daa520",
-            "#d2691e",
-            "#5f9ea0",
-            "#1e90ff",
-            "#ff69b4",
-            "#8a2be2",
-            "#00ff7f"
+            "#ff0000", //Red
+            "#00ff00", //Green
+            "#0000ff", //Blue
+            "#b22222", //Red-brown
+            "#ff7f50", //Orange
+            "#9acd32", //Lime-green
+            "#ff4500", //Red-orange
+            "#2e8b57", //Dark-green
+            "#daa520", //Yellow-orange
+            "#d2691e", //Dark-orange
+            "#5f9ea0", //Dark-cyan
+            "#1e90ff", //Blue
+            "#ff69b4", //Pink
+            "#8a2be2", //Purple
+            "#00ff7f"  //Flashy-green
         ];
 
         private readonly Dictionary<string, TwitchUser> m_LoadedUser = [];
@@ -84,7 +83,7 @@ namespace TwitchCorpse
             return null;
         }
 
-        private bool TryAddAnimatedImageFromFormat(TwitchImage.Format format, Text text)
+        private static bool TryAddAnimatedImageFromFormat(TwitchImage.Format format, Text text)
         {
             if (format.HaveURLs())
             {
@@ -100,7 +99,7 @@ namespace TwitchCorpse
             return false;
         }
 
-        private bool TryAddImageFromFormat(TwitchImage.Format format, Text text)
+        private static bool TryAddImageFromFormat(TwitchImage.Format format, Text text)
         {
             if (format.HaveURLs())
             {
@@ -201,9 +200,9 @@ namespace TwitchCorpse
         {
             if (m_AccessToken == null)
                 return;
-            SendMessage(new TwitchChatMessage("CAP REQ", parameters: "twitch.tv/membership twitch.tv/tags twitch.tv/commands"));
-            SendMessage(new TwitchChatMessage("PASS", channel: string.Format("oauth:{0}", m_AccessToken.AccessToken)));
-            SendMessage(new TwitchChatMessage("NICK", channel: m_SelfUserInfo != null ? m_SelfUserInfo.DisplayName : m_UserName));
+            SendMessage(new TwitchReceivedChatMessage("CAP REQ", parameters: "twitch.tv/membership twitch.tv/tags twitch.tv/commands"));
+            SendMessage(new TwitchReceivedChatMessage("PASS", channel: string.Format("oauth:{0}", m_AccessToken.AccessToken)));
+            SendMessage(new TwitchReceivedChatMessage("NICK", channel: m_SelfUserInfo != null ? m_SelfUserInfo.DisplayName : m_UserName));
         }
 
         private static string GetUserMessageColor(string username, string color)
@@ -219,7 +218,7 @@ namespace TwitchCorpse
             return color;
         }
 
-        private TwitchUser LoadUser(TwitchChatMessage message, bool self)
+        private TwitchUser LoadUser(TwitchReceivedChatMessage message, bool self)
         {
             string userID = message.GetTag("user-id");
             if (m_LoadedUser.TryGetValue(userID, out TwitchUser? user))
@@ -242,12 +241,12 @@ namespace TwitchCorpse
             }
         }
 
-        private void CreateUserMessage(TwitchChatMessage message, bool highlight, bool self)
+        private void CreateUserMessage(TwitchReceivedChatMessage message, bool highlight, bool self)
         {
             bool hasGivenBits = message.HaveTag("bits");
             TwitchUser user = LoadUser(message, self);
             Text displayableMessage = Convert(m_API, message.Parameters, message.Emotes, hasGivenBits);
-            m_TwitchHandler?.OnChatMessage(user, highlight, message.GetTag("id"),
+            m_TwitchHandler?.OnChatMessage(user, highlight, message.GetTag("id"), string.Empty,
                 GetUserMessageColor(user.DisplayName, self ? m_ChatColor : message.GetTag("color")), displayableMessage);
             if (hasGivenBits)
             {
@@ -256,7 +255,7 @@ namespace TwitchCorpse
             }
         }
 
-        private void TreatUserNotice(TwitchChatMessage message)
+        private void TreatUserNotice(TwitchReceivedChatMessage message)
         {
             CreateUserMessage(message, true, false);
             if (message.HaveTag("msg-id"))
@@ -324,7 +323,7 @@ namespace TwitchCorpse
             }
         }
 
-        private void LoadEmoteSets(TwitchChatMessage message)
+        private void LoadEmoteSets(TwitchReceivedChatMessage message)
         {
             if (message.HaveTag("emote-sets"))
             {
@@ -337,14 +336,14 @@ namespace TwitchCorpse
 
         private void TreatReceivedMessage(string data)
         {
-            TwitchChatMessage? message = Parse(data, m_API);
+            TwitchReceivedChatMessage? message = Parse(data, m_API);
             if (message != null)
             {
                 switch (message.GetCommand().Name)
                 {
                     case "PING":
                     {
-                        SendMessage(new TwitchChatMessage("PONG", parameters: message.Parameters));
+                        SendMessage(new TwitchReceivedChatMessage("PONG", parameters: message.Parameters));
                         break;
                     }
                     case "USERSTATE":
@@ -397,7 +396,7 @@ namespace TwitchCorpse
                     case "LOGGED":
                     {
                         TWITCH_IRC.Log(string.Format("<= {0}", data));
-                        SendMessage(new TwitchChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
+                        SendMessage(new TwitchReceivedChatMessage("JOIN", channel: string.Format("#{0}", m_Channel)));
                         break;
                     }
                     case "GLOBALUSERSTATE":
@@ -468,12 +467,12 @@ namespace TwitchCorpse
             {
                 tags.AddTag("user-id", m_SelfUserInfo.ID);
             }
-            TwitchChatMessage messageToSend = new("PRIVMSG", channel: string.Format("#{0}", m_Channel), parameters: message);
+            TwitchReceivedChatMessage messageToSend = new("PRIVMSG", channel: string.Format("#{0}", m_Channel), parameters: message);
             SendMessage(messageToSend);
             CreateUserMessage(messageToSend, false, true);
         }
 
-        private void SendMessage(TwitchChatMessage message)
+        private void SendMessage(TwitchReceivedChatMessage message)
         {
             try
             {
