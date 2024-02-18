@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CorpseLib.Web\CorpseLib.Web.csproj" />
-    <ProjectReference Include="..\CorpseLib\CorpseLib.csproj" />
   </ItemGroup>
 
 </Project>

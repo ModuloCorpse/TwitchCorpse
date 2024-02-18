@@ -1,7 +1,6 @@
 ﻿using CorpseLib.Json;
 using CorpseLib;
 using TwitchCorpse.API;
-using System.Collections.Generic;
 
 namespace TwitchCorpse
 {
