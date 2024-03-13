@@ -6,9 +6,9 @@ namespace TwitchCorpse
 {
     public class TwitchUser(string id, string name, string displayName, string profileImageURL, TwitchUser.Type userType, List<TwitchBadgeInfo> badges)
     {
-        public class JSerializer : AJSerializer<TwitchUser>
+        public class JSerializer : AJsonSerializer<TwitchUser>
         {
-            protected override OperationResult<TwitchUser> Deserialize(JObject reader)
+            protected override OperationResult<TwitchUser> Deserialize(JsonObject reader)
             {
                 if (reader.TryGet("id", out string? id) &&
                     reader.TryGet("name", out string? name) &&
@@ -19,7 +19,7 @@ namespace TwitchCorpse
                 return new("Bad json", string.Empty);
             }
 
-            protected override void Serialize(TwitchUser obj, JObject writer)
+            protected override void Serialize(TwitchUser obj, JsonObject writer)
             {
                 writer["id"] = obj.m_ID;
                 writer["name"] = obj.m_Name;

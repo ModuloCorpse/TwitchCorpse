@@ -1,6 +1,5 @@
 ﻿using CorpseLib.Json;
 using CorpseLib.Logging;
-using CorpseLib.Network;
 using CorpseLib.StructuredText;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
@@ -28,11 +27,11 @@ namespace TwitchCorpse
         {
             PUBSUB.Log("<= Listening to automod-queue");
             List<string> topics = [string.Format("automod-queue.{0}.{0}", m_ChannelID)];
-            JObject json = new()
+            JsonObject json = new()
             {
                 { "type", "LISTEN" }
             };
-            JObject data = new()
+            JsonObject data = new()
             {
                 { "topics", topics },
                 { "auth_token", m_Token.AccessToken }
@@ -43,12 +42,12 @@ namespace TwitchCorpse
             _ = RunUpdateInBackground();
         }
 
-        private static Text GetMessage(JObject messageData)
+        private static Text GetMessage(JsonObject messageData)
         {
             string messageText = messageData.GetOrDefault("text", string.Empty)!;
-            List<JObject> fragmentsObject = messageData.GetList<JObject>("fragments");
+            List<JsonObject> fragmentsObject = messageData.GetList<JsonObject>("fragments");
             List<string> fragments = [];
-            foreach (JObject fragment in fragmentsObject)
+            foreach (JsonObject fragment in fragmentsObject)
             {
                 if (fragment.TryGet("text", out string? str))
                     fragments.Add(str!);
@@ -56,17 +55,17 @@ namespace TwitchCorpse
             return new(messageText);
         }
 
-        private void HandleAutoModQueueData(JObject json)
+        private void HandleAutoModQueueData(JsonObject json)
         {
-            if (json.TryGet("data", out JObject? data))
+            if (json.TryGet("data", out JsonObject? data))
             {
                 if (data!.TryGet("status", out string? status) &&
-                    data!.TryGet("message", out JObject? message))
+                    data!.TryGet("message", out JsonObject? message))
                 {
                     if (status == "PENDING" &&
                         message!.TryGet("id", out string? messageID) &&
-                        message.TryGet("content", out JObject? messageData) &&
-                        message.TryGet("sender", out JObject? messageSender))
+                        message.TryGet("content", out JsonObject? messageData) &&
+                        message.TryGet("sender", out JsonObject? messageSender))
                     {
                         if (messageSender!.TryGet("login", out string? login))
                         {
@@ -84,7 +83,7 @@ namespace TwitchCorpse
         protected override void OnWSMessage(string message)
         {
             PUBSUB.Log(string.Format("<= {0}", message));
-            JFile receivedEvent = new(message);
+            JsonObject receivedEvent = JsonParser.Parse(message);
             if (receivedEvent.TryGet("type", out string? type))
             {
                 switch (type)
@@ -96,12 +95,12 @@ namespace TwitchCorpse
                     }
                     case "MESSAGE":
                     {
-                        if (receivedEvent.TryGet("data", out JObject? data))
+                        if (receivedEvent.TryGet("data", out JsonObject? data))
                         {
                             if (data!.TryGet("topic", out string? topic) &&
                                 data.TryGet("message", out string? messageDataStr))
                             {
-                                JFile messageData = new(messageDataStr!);
+                                JsonObject messageData = JsonParser.Parse(messageDataStr!);
                                 if (topic!.StartsWith("automod-queue"))
                                     HandleAutoModQueueData(messageData!);
                             }

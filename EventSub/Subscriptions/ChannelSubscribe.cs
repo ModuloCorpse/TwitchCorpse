@@ -5,7 +5,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
 {
     internal class ChannelSubscribe(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.subscribe", 1)
     {
-        protected override JObject GenerateSubscriptionCondition(string channelID) => new()
+        protected override JsonObject GenerateSubscriptionCondition(string channelID) => new()
         {
             { "broadcaster_user_id", channelID }
         };

@@ -74,8 +74,8 @@ namespace TwitchCorpse.EventSub
         {
             if (string.IsNullOrEmpty(message))
                 return;
-            JObject eventMessage = JObject.Parse(message);
-            if (eventMessage.TryGet("metadata", out JObject? metadataObj) && eventMessage.TryGet("payload", out JObject? payload))
+            JsonObject eventMessage = JsonParser.Parse(message);
+            if (eventMessage.TryGet("metadata", out JsonObject? metadataObj) && eventMessage.TryGet("payload", out JsonObject? payload))
             {
                 Metadata metadata = new(metadataObj!);
                 if (m_TreatedEventBuffer.PushEventID(metadata.ID))
@@ -84,7 +84,7 @@ namespace TwitchCorpse.EventSub
                     {
                         case "session_welcome":
                         {
-                            if (m_Token != null && payload!.TryGet("session", out JObject? sessionObj) && sessionObj!.TryGet("id", out string? sessionID))
+                            if (m_Token != null && payload!.TryGet("session", out JsonObject? sessionObj) && sessionObj!.TryGet("id", out string? sessionID))
                             {
                                 foreach (var pair in m_Subscriptions)
                                     pair.Value.RegisterSubscription(m_Token, sessionID!, m_ChannelID);
@@ -96,7 +96,7 @@ namespace TwitchCorpse.EventSub
                             break;
                         case "notification":
                         {
-                            if (payload!.TryGet("subscription", out JObject? subscriptionObj) && payload!.TryGet("event", out JObject? eventObj))
+                            if (payload!.TryGet("subscription", out JsonObject? subscriptionObj) && payload!.TryGet("event", out JsonObject? eventObj))
                             {
                                 Subscription subscription = new(subscriptionObj!);
                                 EventData eventData = new(eventObj!);

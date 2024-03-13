@@ -21,7 +21,7 @@ namespace TwitchCorpse.EventSub.Core
         public string CreatedAt => m_CreatedAt;
         public int Cost => m_Cost;
 
-        public Subscription(JObject obj)
+        public Subscription(JsonObject obj)
         {
             m_ID = obj.Get<string>("id")!;
             m_Type = obj.Get<string>("type")!;
@@ -29,8 +29,8 @@ namespace TwitchCorpse.EventSub.Core
             m_Status = obj.Get<string>("status")!;
             m_Cost = obj.Get<int>("cost")!;
             m_CreatedAt = obj.Get<string>("created_at")!;
-            m_Transport = new(obj.Get<JObject>("transport")!);
-            JObject conditionObject = obj.Get<JObject>("condition")!;
+            m_Transport = new(obj.Get<JsonObject>("transport")!);
+            JsonObject conditionObject = obj.Get<JsonObject>("condition")!;
             foreach (var pair in conditionObject)
                 m_Conditions[pair.Key] = pair.Value.ToString();
         }

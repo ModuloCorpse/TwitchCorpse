@@ -17,14 +17,14 @@ namespace TwitchCorpse.EventSub
         internal string Name => m_SubscriptionName;
         internal int Version => m_SubscriptionVersion;
 
-        internal static void RegisterEventSubSubscription(Token token, string subscriptionName, string sessionID, int subscriptionVersion, JObject condition)
+        internal static void RegisterEventSubSubscription(Token token, string subscriptionName, string sessionID, int subscriptionVersion, JsonObject condition)
         {
-            JObject message = new()
+            JsonObject message = new()
             {
                 { "type", subscriptionName },
                 { "version", subscriptionVersion },
                 { "condition", condition },
-                { "transport", new JObject()
+                { "transport", new JsonObject()
                     {
                         { "method", "websocket" },
                         { "session_id", sessionID }
@@ -52,7 +52,7 @@ namespace TwitchCorpse.EventSub
 
         protected static void Log(string log) => EventSubProtocol.EVENTSUB.Log(log);
 
-        protected abstract JObject GenerateSubscriptionCondition(string channelID);
+        protected abstract JsonObject GenerateSubscriptionCondition(string channelID);
         protected abstract void Treat(Subscription subscription, EventData data);
     }
 }

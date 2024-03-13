@@ -2,9 +2,9 @@
 
 namespace TwitchCorpse.EventSub.Core
 {
-    internal class EventData(JObject data)
+    internal class EventData(JsonObject data)
     {
-        private readonly JObject m_Data = data;
+        private readonly JsonObject m_Data = data;
 
         public TwitchUser? GetUser(string user = "")
         {

@@ -5,7 +5,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
 {
     internal class ChannelFollow(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.follow", 2)
     {
-        protected override JObject GenerateSubscriptionCondition(string channelID) => new()
+        protected override JsonObject GenerateSubscriptionCondition(string channelID) => new()
         {
             { "broadcaster_user_id", channelID },
             { "moderator_user_id", channelID }

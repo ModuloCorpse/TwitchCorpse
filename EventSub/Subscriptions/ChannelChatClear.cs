@@ -5,7 +5,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
 {
     internal class ChannelChatClear(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.chat.clear", 1)
     {
-        protected override JObject GenerateSubscriptionCondition(string channelID) => new()
+        protected override JsonObject GenerateSubscriptionCondition(string channelID) => new()
         {
             { "broadcaster_user_id", channelID },
             { "user_id", channelID }

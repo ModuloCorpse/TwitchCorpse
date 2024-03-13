@@ -12,12 +12,12 @@ namespace TwitchCorpse.EventSub.Subscriptions
             {
                 if (data.TryGet("message_id", out string? messageID) &&
                     data.TryGet("message_type", out string? messageType) &&
-                    data.TryGet("message", out JObject? message))
+                    data.TryGet("message", out JsonObject? message))
                 {
-                    Text chatMessage = ConvertFragments(message!.GetList<JObject>("fragments"));
+                    Text chatMessage = ConvertFragments(message!.GetList<JsonObject>("fragments"));
                     Handler?.OnChatMessage(user!, (messageType == "channel_points_highlighted"), messageID!, string.Empty, color!, chatMessage);
 
-                    if (data.TryGet("cheer", out JObject? cheer) && cheer != null && cheer.TryGet("bits", out int? bits))
+                    if (data.TryGet("cheer", out JsonObject? cheer) && cheer != null && cheer.TryGet("bits", out int? bits))
                         Handler?.OnBits(user!, (int)bits!, chatMessage);
                 }
             }

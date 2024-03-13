@@ -14,7 +14,7 @@ namespace TwitchCorpse.EventSub.Core
         public string Callback => m_Callback;
         public string Secret => m_Secret;
 
-        public Transport(JObject obj)
+        public Transport(JsonObject obj)
         {
             m_Method = obj.Get<string>("method")!;
             if (m_Method == "websocket")

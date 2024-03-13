@@ -2,7 +2,7 @@
 
 namespace TwitchCorpse.EventSub.Core
 {
-    internal class Metadata(JObject obj)
+    internal class Metadata(JsonObject obj)
     {
         private readonly string m_ID = obj.Get<string>("message_id")!;
         private readonly string m_Type = obj.Get<string>("message_type")!;

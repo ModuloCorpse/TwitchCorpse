@@ -20,7 +20,8 @@
         public List<string> Tags => m_Tags;
         public int ViewerCount => m_ViewerCount;
         public string Language => m_Language;
-        public string ThumbnailURL => m_ThumbnailURL;
         public bool IsMature => m_IsMature;
+
+        public string GetThumbnailURL(uint width, uint height) => m_ThumbnailURL.Replace("{width}", width.ToString()).Replace("{height}", height.ToString());
     }
 }

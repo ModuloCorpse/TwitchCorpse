@@ -30,13 +30,13 @@ namespace TwitchCorpse.EventSub.Subscriptions
 
         protected TwitchAPI API => m_API;
 
-        protected override JObject GenerateSubscriptionCondition(string channelID) => new()
+        protected override JsonObject GenerateSubscriptionCondition(string channelID) => new()
         {
             { "broadcaster_user_id", channelID },
             { "user_id", channelID }
         };
 
-        private bool TryAddAnimatedImageFromFormat(TwitchImage.Format format, Text text)
+        private static bool TryAddAnimatedImageFromFormat(TwitchImage.Format format, Text text)
         {
             if (format.HaveURLs())
             {
@@ -52,7 +52,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             return false;
         }
 
-        private bool TryAddImageFromFormat(TwitchImage.Format format, Text text)
+        private static bool TryAddImageFromFormat(TwitchImage.Format format, Text text)
         {
             if (format.HaveURLs())
             {
@@ -68,7 +68,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             return false;
         }
 
-        private void AddTwitchImage(TwitchImage image, Text text)
+        private static void AddTwitchImage(TwitchImage image, Text text)
         {
             if (!TryAddAnimatedImageFromFormat(image[TwitchImage.Theme.Type.DARK][TwitchImage.Format.Type.ANIMATED], text))
             {
@@ -83,17 +83,13 @@ namespace TwitchCorpse.EventSub.Subscriptions
             }
         }
 
-        private void AddEmoteToMessage(Text chatMessage, JObject fragment, string text)
+        private void AddEmoteToMessage(Text chatMessage, JsonObject fragment, string text)
         {
-            if (fragment.TryGet("emote", out JObject? emote) &&
-                emote!.TryGet("id", out string? id))
+            if (fragment.TryGet("emote", out JsonObject? emote) && emote != null &&
+                emote!.TryGet("id", out string? id) && id != null &&
+                emote.TryGet("emote_set_id", out string? emoteSetID) && emoteSetID != null)
             {
-                TwitchEmoteInfo? emoteInfo = m_API.GetEmoteFromID(id!);
-                if (emoteInfo == null && emote.TryGet("emote_set_id", out string? emoteSetID))
-                {
-                    m_API.LoadEmoteSet(emoteSetID!);
-                    emoteInfo = m_API.GetEmoteFromID(id!);
-                }
+                TwitchEmoteInfo? emoteInfo = m_API.GetEmote(emoteSetID, id);
                 if (emoteInfo != null)
                     AddTwitchImage(emoteInfo.Image, chatMessage);
                 else
@@ -101,9 +97,9 @@ namespace TwitchCorpse.EventSub.Subscriptions
             }
         }
 
-        private void AddCheermoteToMessage(Text chatMessage, JObject fragment, string text)
+        private void AddCheermoteToMessage(Text chatMessage, JsonObject fragment, string text)
         {
-            if (fragment.TryGet("cheermote", out JObject? cheermote) &&
+            if (fragment.TryGet("cheermote", out JsonObject? cheermote) &&
                 cheermote!.TryGet("tier", out int? tier) &&
                 cheermote!.TryGet("prefix", out string? prefix))
             {
@@ -111,7 +107,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                 TwitchCheermote[] cheermotes = m_API.GetTwitchCheermotes();
                 foreach (TwitchCheermote twitchCheermote in cheermotes)
                 {
-                    if (twitchCheermote.Prefix.ToLower() == cheermotePrefix)
+                    if (twitchCheermote.Prefix.Equals(cheermotePrefix, StringComparison.CurrentCultureIgnoreCase))
                     {
                         TwitchCheermote.Tier[] tiers = twitchCheermote.Tiers;
                         foreach (TwitchCheermote.Tier cheermoteTier in tiers)
@@ -124,13 +120,14 @@ namespace TwitchCorpse.EventSub.Subscriptions
                         }
                     }
                 }
+                chatMessage.AddText(text);
             }
         }
 
-        protected Text ConvertFragments(List<JObject> fragments)
+        protected Text ConvertFragments(List<JsonObject> fragments)
         {
             Text chatMessage = new();
-            foreach (JObject fragment in fragments)
+            foreach (JsonObject fragment in fragments)
             {
                 if (fragment.TryGet("type", out string? type) &&
                     fragment.TryGet("text", out string? text))
@@ -154,7 +151,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                         }
                         case "mention":
                         {
-                            if (fragment.TryGet("mention", out JObject? mention) &&
+                            if (fragment.TryGet("mention", out JsonObject? mention) &&
                                 mention!.TryGet("user_name", out string? userName))
                                 chatMessage.AddText(string.Format("@{0}", userName));
                             break;
@@ -183,9 +180,9 @@ namespace TwitchCorpse.EventSub.Subscriptions
                     color = ms_Colors[colorIdx];
                 }
 
-                List<JObject> badges = data.GetList<JObject>("badges");
+                List<JsonObject> badges = data.GetList<JsonObject>("badges");
                 List<TwitchBadgeInfo> userBadges = [];
-                foreach (JObject badge in badges)
+                foreach (JsonObject badge in badges)
                 {
                     if (badge.TryGet("set_id", out string? setID) && setID != null &&
                         badge.TryGet("id", out string? id) && id != null)

@@ -6,7 +6,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
 {
     internal class ChannelRaid(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.raid", 1)
     {
-        protected override JObject GenerateSubscriptionCondition(string channelID) => new();
+        protected override JsonObject GenerateSubscriptionCondition(string channelID) => new();
 
         internal override void RegisterSubscription(Token token, string sessionID, string channelID)
         {
