@@ -47,6 +47,8 @@ namespace TwitchCorpse.EventSub
                     case SubscriptionType.ChannelChatMessage: AddEventSubSubscription(new ChannelChatMessage(api, twitchHandler)); break;
                     case SubscriptionType.ChannelChatMessageDelete: AddEventSubSubscription(new ChannelChatMessageDelete(twitchHandler)); break;
                     case SubscriptionType.ChannelChatNotification: AddEventSubSubscription(new ChannelChatNotification(api, twitchHandler)); break;
+                    case SubscriptionType.AutomodMessageHeld: AddEventSubSubscription(new AutomodMessageHold(api, twitchHandler)); break;
+                    case SubscriptionType.AutomodMessageUpdate: AddEventSubSubscription(new AutomodMessageUpdate(twitchHandler)); break;
                 }
             }
         }

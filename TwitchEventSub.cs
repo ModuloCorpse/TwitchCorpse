@@ -3,6 +3,7 @@ using CorpseLib.Network;
 using CorpseLib.Serialize;
 using CorpseLib.Web.OAuth;
 using TwitchCorpse.EventSub;
+using TwitchCorpse.EventSub.Subscriptions;
 
 namespace TwitchCorpse
 {
@@ -10,20 +11,22 @@ namespace TwitchCorpse
     {
         public enum SubscriptionType
         {
-            ChannelFollow,
-            ChannelSubscribe,
-            ChannelSubscriptionGift,
-            ChannelRaid,
+            AutomodMessageHeld,
+            AutomodMessageUpdate,
             ChannelChannelPointsCustomRewardRedemptionAdd,
-            StreamOnline,
-            StreamOffline,
-            ChannelShoutoutCreate,
-            ChannelShoutoutReceive,
             ChannelChatClear,
             ChannelChatClearUserMessages,
             ChannelChatMessage,
             ChannelChatMessageDelete,
-            ChannelChatNotification
+            ChannelChatNotification,
+            ChannelFollow,
+            ChannelRaid,
+            ChannelShoutoutCreate,
+            ChannelShoutoutReceive,
+            ChannelSubscribe,
+            ChannelSubscriptionGift,
+            StreamOffline,
+            StreamOnline
         }
 
         public static Logger LOGGER => EventSubProtocol.EVENTSUB;
@@ -40,15 +43,22 @@ namespace TwitchCorpse
         private EventSubProtocol? m_ReconnectProtocol = null;
         private readonly Token m_Token;
         private readonly SubscriptionType[] m_SubscriptionTypes = [
+            SubscriptionType.AutomodMessageHeld,
+            SubscriptionType.AutomodMessageUpdate,
+            SubscriptionType.ChannelChannelPointsCustomRewardRedemptionAdd,
+            SubscriptionType.ChannelChatClear,
+            SubscriptionType.ChannelChatClearUserMessages,
+            SubscriptionType.ChannelChatMessage,
+            SubscriptionType.ChannelChatMessageDelete,
+            SubscriptionType.ChannelChatNotification,
             SubscriptionType.ChannelFollow,
+            SubscriptionType.ChannelRaid,
+            SubscriptionType.ChannelShoutoutCreate,
+            SubscriptionType.ChannelShoutoutReceive,
             SubscriptionType.ChannelSubscribe,
             SubscriptionType.ChannelSubscriptionGift,
-            SubscriptionType.ChannelRaid,
-            SubscriptionType.ChannelChannelPointsCustomRewardRedemptionAdd,
-            SubscriptionType.StreamOnline,
             SubscriptionType.StreamOffline,
-            SubscriptionType.ChannelShoutoutCreate,
-            SubscriptionType.ChannelShoutoutReceive];
+            SubscriptionType.StreamOnline];
         private readonly string m_ChannelID;
 
         internal TwitchEventSub(TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler = null)

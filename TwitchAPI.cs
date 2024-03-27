@@ -36,13 +36,13 @@ namespace TwitchCorpse
             "chat:read",
             "chat:edit",
             "moderator:manage:automod",
-            "moderator:read:automod_settings",
-            "moderator:read:followers",
             "moderator:manage:banned_users",
             "moderator:manage:blocked_terms",
             "moderator:manage:chat_messages",
             "moderator:manage:shoutouts",
             "moderation:read",
+            "moderator:read:automod_settings",
+            "moderator:read:followers",
             "user:bot",
             "user:read:chat",
             "user:read:email",
@@ -83,16 +83,6 @@ namespace TwitchCorpse
                     }
                 }
             }
-        }
-
-        public TwitchPubSub? PubSubConnection(string channelID)
-        {
-            if (m_AccessToken == null)
-                return null;
-            TwitchPubSub protocol = new(this, m_AccessToken, channelID, m_Handler);
-            TCPAsyncClient twitchPubSubClient = new(protocol, URI.Parse("wss://pubsub-edge.twitch.tv"));
-            twitchPubSubClient.Start();
-            return protocol;
         }
 
         public TwitchEventSub? EventSubConnection(string channelID)

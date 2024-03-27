@@ -162,11 +162,11 @@ namespace TwitchCorpse.EventSub.Subscriptions
             return chatMessage;
         }
 
-        protected bool ExtractUserInfo(EventData data, out TwitchUser? user, out string? color)
+        protected bool ExtractUserInfo(EventData data, string idKey, out TwitchUser? user, out string? color)
         {
             color = null;
             user = null;
-            if (data.TryGet("chatter_user_id", out string? userID))
+            if (data.TryGet(idKey, out string? userID))
             {
                 TwitchUser? foundUser = m_API.GetUserInfoFromID(userID!);
                 if (foundUser == null)
@@ -198,5 +198,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             }
             return false;
         }
+
+        protected bool ExtractUserInfo(EventData data, out TwitchUser? user, out string? color) => ExtractUserInfo(data, "chatter_user_id", out user, out color);
     }
 }
