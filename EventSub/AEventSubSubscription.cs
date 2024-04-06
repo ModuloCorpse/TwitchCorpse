@@ -11,9 +11,11 @@ namespace TwitchCorpse.EventSub
     {
         private readonly ITwitchHandler? m_TwitchHandler = twitchHandler;
         private readonly string m_SubscriptionName = subscriptionName;
+        private string m_ChannelID = string.Empty;
         private readonly int m_SubscriptionVersion = subscriptionVersion;
 
         protected ITwitchHandler? Handler => m_TwitchHandler;
+        protected string ChannelID => m_ChannelID;
         internal string Name => m_SubscriptionName;
         internal int Version => m_SubscriptionVersion;
 
@@ -42,11 +44,16 @@ namespace TwitchCorpse.EventSub
                 Log(string.Format("<= Error when listening to {0}: {1}", subscriptionName, response.Body));
         }
 
-        internal virtual void RegisterSubscription(Token token, string sessionID, string channelID)
+        internal void RegisterSubscription(Token token, string sessionID, string channelID)
+        {
+            m_ChannelID = channelID;
+            OnRegisterSubscription(token, sessionID, channelID);
+        }
+
+        protected virtual void OnRegisterSubscription(Token token, string sessionID, string channelID)
         {
             RegisterEventSubSubscription(token, m_SubscriptionName, sessionID, m_SubscriptionVersion, GenerateSubscriptionCondition(channelID));
         }
-
 
         internal void HandleEvent(Subscription subscription, EventData data) => Treat(subscription, data);
 
