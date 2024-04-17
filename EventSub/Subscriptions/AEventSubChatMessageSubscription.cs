@@ -36,7 +36,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             { "user_id", channelID }
         };
 
-        private static bool TryAddAnimatedImageFromFormat(TwitchImage.Format format, Text text)
+        private static bool TryAddAnimatedImageFromFormat(TwitchImage.Format format, Text text, string alt)
         {
             if (format.HaveURLs())
             {
@@ -44,7 +44,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                 {
                     if (format.Have(scale))
                     {
-                        text.AddAnimatedImage(format[scale]);
+                        text.AddAnimatedImage(format[scale], alt);
                         return true;
                     }
                 }
@@ -52,7 +52,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             return false;
         }
 
-        private static bool TryAddImageFromFormat(TwitchImage.Format format, Text text)
+        private static bool TryAddImageFromFormat(TwitchImage.Format format, Text text, string alt)
         {
             if (format.HaveURLs())
             {
@@ -60,7 +60,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                 {
                     if (format.Have(scale))
                     {
-                        text.AddImage(format[scale]);
+                        text.AddImage(format[scale], alt);
                         return true;
                     }
                 }
@@ -70,13 +70,13 @@ namespace TwitchCorpse.EventSub.Subscriptions
 
         private static void AddTwitchImage(TwitchImage image, Text text)
         {
-            if (!TryAddAnimatedImageFromFormat(image[TwitchImage.Theme.Type.DARK][TwitchImage.Format.Type.ANIMATED], text))
+            if (!TryAddAnimatedImageFromFormat(image[TwitchImage.Theme.Type.DARK][TwitchImage.Format.Type.ANIMATED], text, image.Alt))
             {
-                if (!TryAddImageFromFormat(image[TwitchImage.Theme.Type.DARK][TwitchImage.Format.Type.STATIC], text))
+                if (!TryAddImageFromFormat(image[TwitchImage.Theme.Type.DARK][TwitchImage.Format.Type.STATIC], text, image.Alt))
                 {
-                    if (!TryAddAnimatedImageFromFormat(image[TwitchImage.Theme.Type.LIGHT][TwitchImage.Format.Type.ANIMATED], text))
+                    if (!TryAddAnimatedImageFromFormat(image[TwitchImage.Theme.Type.LIGHT][TwitchImage.Format.Type.ANIMATED], text, image.Alt))
                     {
-                        if (!TryAddImageFromFormat(image[TwitchImage.Theme.Type.LIGHT][TwitchImage.Format.Type.STATIC], text))
+                        if (!TryAddImageFromFormat(image[TwitchImage.Theme.Type.LIGHT][TwitchImage.Format.Type.STATIC], text, image.Alt))
                             text.AddText(image.Alt);
                     }
                 }
