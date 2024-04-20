@@ -1,8 +1,8 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
 
 namespace TwitchCorpse.EventSub.Core
 {
-    internal class Metadata(JsonObject obj)
+    internal class Metadata(DataObject obj)
     {
         private readonly string m_ID = obj.Get<string>("message_id")!;
         private readonly string m_Type = obj.Get<string>("message_type")!;

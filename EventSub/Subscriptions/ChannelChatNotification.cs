@@ -1,4 +1,4 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
 using CorpseLib.StructuredText;
 using TwitchCorpse.EventSub.Core;
 
@@ -15,7 +15,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             { "PURPLE", "#8a2be2" } //Purple
         };
 
-        private static int GetSubTier(JsonObject subNotification)
+        private static int GetSubTier(DataObject subNotification)
         {
             if (subNotification.TryGet("is_prime", out bool? prime) && (bool)prime!)
                 return 4;
@@ -29,15 +29,15 @@ namespace TwitchCorpse.EventSub.Subscriptions
             if (ExtractUserInfo(data, out TwitchUser? user, out string? color))
             {
                 if (data.TryGet("message_id", out string? messageID) &&
-                    data.TryGet("message", out JsonObject? message) &&
+                    data.TryGet("message", out DataObject? message) &&
                     data.TryGet("notice_type", out string? noticeType))
                 {
-                    Text chatMessage = ConvertFragments(message!.GetList<JsonObject>("fragments"));
+                    Text chatMessage = ConvertFragments(message!.GetList<DataObject>("fragments"));
                     switch (noticeType!)
                     {
                         case "sub":
                         {
-                            if (data.TryGet("sub", out JsonObject? sub) && sub != null)
+                            if (data.TryGet("sub", out DataObject? sub) && sub != null)
                             {
                                 int followTier = GetSubTier(sub);
                                 if (followTier == -1)
@@ -51,7 +51,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                         }
                         case "resub":
                         {
-                            if (data.TryGet("resub", out JsonObject? resub) && resub != null)
+                            if (data.TryGet("resub", out DataObject? resub) && resub != null)
                             {
                                 int followTier = GetSubTier(resub);
                                 if (followTier == -1)
@@ -81,7 +81,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                         }
                         case "sub_gift":
                         {
-                            if (data.TryGet("sub_gift", out JsonObject? subGift) && subGift != null)
+                            if (data.TryGet("sub_gift", out DataObject? subGift) && subGift != null)
                             {
                                 int followTier = GetSubTier(subGift);
                                 if (followTier == -1)
@@ -101,7 +101,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                         }
                         case "announcement":
                         {
-                            if (data.TryGet("announcement", out JsonObject? announcement) && announcement != null)
+                            if (data.TryGet("announcement", out DataObject? announcement) && announcement != null)
                             {
                                 if (announcement.TryGet("color", out string? announcementBorderColor) && announcementBorderColor != null &&
                                     ms_Colors.TryGetValue(announcementBorderColor, out string? announcementColor))

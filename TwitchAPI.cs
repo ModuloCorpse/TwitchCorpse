@@ -1,4 +1,5 @@
 ﻿using CorpseLib;
+using CorpseLib.DataNotation;
 using CorpseLib.Json;
 using CorpseLib.Logging;
 using CorpseLib.Network;
@@ -115,9 +116,9 @@ namespace TwitchCorpse
             return response;
         }
 
-        private static Response SendRequest(Request.MethodType method, string url, JsonObject content, RefreshToken? token)
+        private static Response SendRequest(Request.MethodType method, string url, DataObject content, RefreshToken? token)
         {
-            URLRequest request = new(URI.Parse(url), method, content.ToNetworkString());
+            URLRequest request = new(URI.Parse(url), method, JsonParser.NetStr(content));
             request.AddContentType(MIME.APPLICATION.JSON);
             return SendComposedRequest(request, token);
         }
@@ -126,14 +127,14 @@ namespace TwitchCorpse
 
         private void LoadBadgeContent(string content)
         {
-            JsonObject responseJson = JsonParser.Parse(content);
-            List<JsonObject> datas = responseJson.GetList<JsonObject>("data");
-            foreach (JsonObject data in datas)
+            DataObject responseJson = JsonParser.Parse(content);
+            List<DataObject> datas = responseJson.GetList<DataObject>("data");
+            foreach (DataObject data in datas)
             {
                 if (data.TryGet("set_id", out string? setID))
                 {
-                    List<JsonObject> versions = data.GetList<JsonObject>("versions");
-                    foreach (JsonObject version in versions)
+                    List<DataObject> versions = data.GetList<DataObject>("versions");
+                    foreach (DataObject version in versions)
                     {
                         if (version.TryGet("id", out string? id) &&
                             version.TryGet("image_url_1x", out string? url1x) &&
@@ -156,13 +157,13 @@ namespace TwitchCorpse
 
         private void LoadEmoteSetContent(string emoteSetID, string content)
         {
-            JsonObject responseJson = JsonParser.Parse(content);
+            DataObject responseJson = JsonParser.Parse(content);
             if (!m_EmoteSet.ContainsKey(emoteSetID))
                 m_EmoteSet[emoteSetID] = [];
             if (responseJson.TryGet("template", out string? template))
             {
-                List<JsonObject> datas = responseJson.GetList<JsonObject>("data");
-                foreach (JsonObject data in datas)
+                List<DataObject> datas = responseJson.GetList<DataObject>("data");
+                foreach (DataObject data in datas)
                 {
                     List<string> formats = data.GetList<string>("format");
                     List<string> scales = data.GetList<string>("scale");
@@ -268,8 +269,8 @@ namespace TwitchCorpse
                 Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/moderation/moderators?broadcaster_id={0}&user_id={1}", m_SelfUserInfo.ID, id), m_AccessToken);
                 if (response.StatusCode == 200)
                 {
-                    JsonObject json = JsonParser.Parse(response.Body);
-                    isMod = json.GetList<JsonObject>("data").Count != 0;
+                    DataObject json = JsonParser.Parse(response.Body);
+                    isMod = json.GetList<DataObject>("data").Count != 0;
                 }
             }
             return GetUserType(self, isMod, type, id);
@@ -277,11 +278,11 @@ namespace TwitchCorpse
 
         private TwitchUser? GetUserInfo(string content, TwitchUser.Type? userType)
         {
-            JsonObject responseJson = JsonParser.Parse(content);
-            List<JsonObject> datas = responseJson.GetList<JsonObject>("data");
+            DataObject responseJson = JsonParser.Parse(content);
+            List<DataObject> datas = responseJson.GetList<DataObject>("data");
             if (datas.Count > 0)
             {
-                JsonObject data = datas[0];
+                DataObject data = datas[0];
                 if (data.TryGet("id", out string? id) &&
                     data.TryGet("login", out string? login) &&
                     data.TryGet("display_name", out string? displayName) &&
@@ -315,11 +316,11 @@ namespace TwitchCorpse
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), m_AccessToken);
             if (response.StatusCode == 200)
             {
-                JsonObject responseJson = JsonParser.Parse(response.Body);
-                List<JsonObject> datas = responseJson.GetList<JsonObject>("data");
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                List<DataObject> datas = responseJson.GetList<DataObject>("data");
                 if (datas.Count > 0)
                 {
-                    JsonObject data = datas[0];
+                    DataObject data = datas[0];
                     if (data.TryGet("game_id", out string? gameID) &&
                         data.TryGet("game_name", out string? gameName) &&
                         data.TryGet("title", out string? title) &&
@@ -334,7 +335,7 @@ namespace TwitchCorpse
         {
             if (string.IsNullOrEmpty(title) && string.IsNullOrEmpty(gameID) && string.IsNullOrEmpty(language))
                 return false;
-            JsonObject body = [];
+            DataObject body = [];
             if (!string.IsNullOrEmpty(title))
                 body.Add("title", title);
             if (!string.IsNullOrEmpty(gameID))
@@ -351,8 +352,8 @@ namespace TwitchCorpse
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users/follows?from_id={0}", user.ID), m_AccessToken);
             if (response.StatusCode == 200)
             {
-                JsonObject responseJson = JsonParser.Parse(response.Body);
-                foreach (JsonObject data in responseJson.GetList<JsonObject>("data"))
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                foreach (DataObject data in responseJson.GetList<DataObject>("data"))
                 {
                     if (data.TryGet("to_id", out string? toID) &&
                         data.TryGet("to_login", out string? toLogin) &&
@@ -369,8 +370,8 @@ namespace TwitchCorpse
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(query)), m_AccessToken);
             if (response.StatusCode == 200)
             {
-                JsonObject responseJson = JsonParser.Parse(response.Body);
-                foreach (JsonObject data in responseJson.GetList<JsonObject>("data"))
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                foreach (DataObject data in responseJson.GetList<DataObject>("data"))
                 {
                     if (data.TryGet("id", out string? id) &&
                         data.TryGet("name", out string? name) &&
@@ -386,8 +387,8 @@ namespace TwitchCorpse
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(categoryName)), m_AccessToken);
             if (response.StatusCode == 200)
             {
-                JsonObject responseJson = JsonParser.Parse(response.Body);
-                foreach (JsonObject data in responseJson.GetList<JsonObject>("data"))
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                foreach (DataObject data in responseJson.GetList<DataObject>("data"))
                 {
                     if (data.TryGet("id", out string? id) && id == categoryID &&
                         data.TryGet("name", out string? name) &&
@@ -402,7 +403,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JsonObject json = new()
+            DataObject json = new()
             {
                 { "user_id", m_SelfUserInfo.ID },
                 { "msg_id", messageID },
@@ -416,14 +417,14 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JsonObject data = new()
+            DataObject data = new()
             {
                 { "user_id", user.ID },
                 { "reason", reason }
             };
             if (duration > 0)
                 data.Add("duration", duration);
-            JsonObject json = new()
+            DataObject json = new()
             {
                 { "data", data }
             };
@@ -444,8 +445,8 @@ namespace TwitchCorpse
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/streams?user_id={0}", user.ID), m_AccessToken);
             if (response.StatusCode == 200)
             {
-                JsonObject responseJson = JsonParser.Parse(response.Body);
-                foreach (JsonObject data in responseJson.GetList<JsonObject>("data"))
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                foreach (DataObject data in responseJson.GetList<DataObject>("data"))
                 {
                     if (data.TryGet("id", out string? id) && user.ID == id &&
                         data.TryGet("user_id", out string? userID) &&
@@ -468,7 +469,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            JsonObject json = new()
+            DataObject json = new()
             {
                 { "broadcaster_id", m_SelfUserInfo.ID },
                 { "length", duration }
@@ -477,7 +478,7 @@ namespace TwitchCorpse
             return response.StatusCode == 200;
         }
 
-        public static void LoadCheermoteFormat(JsonObject obj, Theme theme, Format.Type formatType)
+        public static void LoadCheermoteFormat(DataObject obj, Theme theme, Format.Type formatType)
         {
             Format format = theme[formatType];
             if (obj.TryGet("1", out string? url1x))
@@ -492,12 +493,12 @@ namespace TwitchCorpse
                 format[4] = url4x!;
         }
 
-        public static void LoadCheermoteTheme(JsonObject obj, TwitchImage image, Theme.Type themeType)
+        public static void LoadCheermoteTheme(DataObject obj, TwitchImage image, Theme.Type themeType)
         {
             Theme theme = image[themeType];
-            if (obj.TryGet("animated", out JsonObject? animated))
+            if (obj.TryGet("animated", out DataObject? animated))
                 LoadCheermoteFormat(animated!, theme, Format.Type.ANIMATED);
-            if (obj.TryGet("static", out JsonObject? @static))
+            if (obj.TryGet("static", out DataObject? @static))
                 LoadCheermoteFormat(@static!, theme, Format.Type.STATIC);
         }
 
@@ -507,22 +508,22 @@ namespace TwitchCorpse
             Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/bits/cheermotes?broadcaster_id={0}", m_SelfUserInfo.ID), m_AccessToken);
             if (response.StatusCode == 200)
             {
-                JsonObject responseJson = JsonParser.Parse(response.Body);
-                foreach (JsonObject data in responseJson.GetList<JsonObject>("data"))
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                foreach (DataObject data in responseJson.GetList<DataObject>("data"))
                 {
                     if (data.TryGet("prefix", out string? prefix))
                     {
                         TwitchCheermote twitchCheermote = new(prefix!);
-                        foreach (JsonObject tier in data.GetList<JsonObject>("tiers"))
+                        foreach (DataObject tier in data.GetList<DataObject>("tiers"))
                         {
                             if (tier.TryGet("min_bits", out int? threshold) &&
                                 tier.TryGet("can_cheer", out bool? canCheer) &&
-                                tier.TryGet("images", out JsonObject? images))
+                                tier.TryGet("images", out DataObject? images))
                             {
                                 TwitchImage image = new(string.Format("{0}{1}", prefix!, threshold));
-                                if (images!.TryGet("dark", out JsonObject? dark))
+                                if (images!.TryGet("dark", out DataObject? dark))
                                     LoadCheermoteTheme(dark!, image, TwitchImage.Theme.Type.DARK);
-                                if (images!.TryGet("light", out JsonObject? light))
+                                if (images!.TryGet("light", out DataObject? light))
                                     LoadCheermoteTheme(light!, image, TwitchImage.Theme.Type.LIGHT);
                                 twitchCheermote.AddTier(new(image, (int)threshold!, (bool)canCheer!));
                             }
@@ -534,13 +535,13 @@ namespace TwitchCorpse
             return [.. ret];
         }
 
-        private string PostChatMessage(JsonObject chatMessage)
+        private string PostChatMessage(DataObject chatMessage)
         {
             Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/chat/messages", chatMessage, m_AccessToken);
             if (response.StatusCode == 200)
             {
-                JsonObject responseJson = JsonParser.Parse(response.Body);
-                foreach (JsonObject data in responseJson.GetList<JsonObject>("data"))
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                foreach (DataObject data in responseJson.GetList<DataObject>("data"))
                 {
                     if (data.TryGet("is_sent", out bool? isSent) && (bool)isSent! &&
                         data.TryGet("message_id", out string? id))

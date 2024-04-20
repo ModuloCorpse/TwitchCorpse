@@ -1,14 +1,14 @@
-﻿using CorpseLib.Json;
-using CorpseLib;
+﻿using CorpseLib;
 using TwitchCorpse.API;
+using CorpseLib.DataNotation;
 
 namespace TwitchCorpse
 {
     public class TwitchUser(string id, string name, string displayName, string profileImageURL, TwitchUser.Type userType, List<TwitchBadgeInfo> badges)
     {
-        public class JSerializer : AJsonSerializer<TwitchUser>
+        public class DataSerializer : ADataSerializer<TwitchUser>
         {
-            protected override OperationResult<TwitchUser> Deserialize(JsonObject reader)
+            protected override OperationResult<TwitchUser> Deserialize(DataObject reader)
             {
                 if (reader.TryGet("id", out string? id) &&
                     reader.TryGet("name", out string? name) &&
@@ -19,7 +19,7 @@ namespace TwitchCorpse
                 return new("Bad json", string.Empty);
             }
 
-            protected override void Serialize(TwitchUser obj, JsonObject writer)
+            protected override void Serialize(TwitchUser obj, DataObject writer)
             {
                 writer["id"] = obj.m_ID;
                 writer["name"] = obj.m_Name;

@@ -1,4 +1,4 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
 
 namespace TwitchCorpse.EventSub.Core
 {
@@ -14,7 +14,7 @@ namespace TwitchCorpse.EventSub.Core
         public string Callback => m_Callback;
         public string Secret => m_Secret;
 
-        public Transport(JsonObject obj)
+        public Transport(DataObject obj)
         {
             m_Method = obj.Get<string>("method")!;
             if (m_Method == "websocket")

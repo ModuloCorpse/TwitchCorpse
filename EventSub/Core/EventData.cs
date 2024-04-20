@@ -1,10 +1,10 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
 
 namespace TwitchCorpse.EventSub.Core
 {
-    internal class EventData(JsonObject data)
+    internal class EventData(DataObject data)
     {
-        private readonly JsonObject m_Data = data;
+        private readonly DataObject m_Data = data;
 
         public TwitchUser? GetUser(string user = "")
         {

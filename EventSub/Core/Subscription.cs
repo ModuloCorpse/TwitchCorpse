@@ -1,4 +1,5 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
+using CorpseLib.Json;
 
 namespace TwitchCorpse.EventSub.Core
 {
@@ -21,7 +22,7 @@ namespace TwitchCorpse.EventSub.Core
         public string CreatedAt => m_CreatedAt;
         public int Cost => m_Cost;
 
-        public Subscription(JsonObject obj)
+        public Subscription(DataObject obj)
         {
             m_ID = obj.Get<string>("id")!;
             m_Type = obj.Get<string>("type")!;
@@ -29,10 +30,10 @@ namespace TwitchCorpse.EventSub.Core
             m_Status = obj.Get<string>("status")!;
             m_Cost = obj.Get<int>("cost")!;
             m_CreatedAt = obj.Get<string>("created_at")!;
-            m_Transport = new(obj.Get<JsonObject>("transport")!);
-            JsonObject conditionObject = obj.Get<JsonObject>("condition")!;
+            m_Transport = new(obj.Get<DataObject>("transport")!);
+            DataObject conditionObject = obj.Get<DataObject>("condition")!;
             foreach (var pair in conditionObject)
-                m_Conditions[pair.Key] = pair.Value.ToString();
+                m_Conditions[pair.Key] = JsonParser.Str(pair.Value);
         }
 
         public bool HaveCondition(string condition) => m_Conditions.ContainsKey(condition);

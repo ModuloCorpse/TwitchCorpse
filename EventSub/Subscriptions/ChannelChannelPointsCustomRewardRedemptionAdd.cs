@@ -1,11 +1,11 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
     internal class ChannelChannelPointsCustomRewardRedemptionAdd(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.channel_points_custom_reward_redemption.add", 1)
     {
-        protected override JsonObject GenerateSubscriptionCondition(string channelID) => new()
+        protected override DataObject GenerateSubscriptionCondition(string channelID) => new()
         {
             { "broadcaster_user_id", channelID }
         };
@@ -13,7 +13,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
         protected override void Treat(Subscription subscription, EventData data)
         {
             TwitchUser? viewer = data.GetUser();
-            if (viewer != null && data.TryGet("reward", out JsonObject? rewardInfo))
+            if (viewer != null && data.TryGet("reward", out DataObject? rewardInfo))
             {
                 data.TryGet("user_input", out string? input);
                 if (rewardInfo!.TryGet("title", out string? title))

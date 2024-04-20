@@ -1,4 +1,5 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
+using CorpseLib.Json;
 using CorpseLib.Logging;
 using CorpseLib.Web;
 using CorpseLib.Web.Http;
@@ -76,8 +77,8 @@ namespace TwitchCorpse.EventSub
         {
             if (string.IsNullOrEmpty(message))
                 return;
-            JsonObject eventMessage = JsonParser.Parse(message);
-            if (eventMessage.TryGet("metadata", out JsonObject? metadataObj) && eventMessage.TryGet("payload", out JsonObject? payload))
+            DataObject eventMessage = JsonParser.Parse(message);
+            if (eventMessage.TryGet("metadata", out DataObject? metadataObj) && eventMessage.TryGet("payload", out DataObject? payload))
             {
                 Metadata metadata = new(metadataObj!);
                 if (m_TreatedEventBuffer.PushEventID(metadata.ID))
@@ -86,7 +87,7 @@ namespace TwitchCorpse.EventSub
                     {
                         case "session_welcome":
                         {
-                            if (m_Token != null && payload!.TryGet("session", out JsonObject? sessionObj) && sessionObj!.TryGet("id", out string? sessionID))
+                            if (m_Token != null && payload!.TryGet("session", out DataObject? sessionObj) && sessionObj!.TryGet("id", out string? sessionID))
                             {
                                 foreach (var pair in m_Subscriptions)
                                     pair.Value.RegisterSubscription(m_Token, sessionID!, m_ChannelID);
@@ -98,7 +99,7 @@ namespace TwitchCorpse.EventSub
                             break;
                         case "notification":
                         {
-                            if (payload!.TryGet("subscription", out JsonObject? subscriptionObj) && payload!.TryGet("event", out JsonObject? eventObj))
+                            if (payload!.TryGet("subscription", out DataObject? subscriptionObj) && payload!.TryGet("event", out DataObject? eventObj))
                             {
                                 Subscription subscription = new(subscriptionObj!);
                                 EventData eventData = new(eventObj!);

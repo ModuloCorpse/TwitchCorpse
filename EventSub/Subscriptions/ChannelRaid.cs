@@ -1,4 +1,4 @@
-﻿using CorpseLib.Json;
+﻿using CorpseLib.DataNotation;
 using CorpseLib.Web.OAuth;
 using TwitchCorpse.EventSub.Core;
 
@@ -6,7 +6,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
 {
     internal class ChannelRaid(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.raid", 1)
     {
-        protected override JsonObject GenerateSubscriptionCondition(string channelID) => [];
+        protected override DataObject GenerateSubscriptionCondition(string channelID) => [];
 
         protected override void OnRegisterSubscription(Token token, string sessionID, string channelID)
         {

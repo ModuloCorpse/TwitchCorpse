@@ -3,7 +3,6 @@ using CorpseLib.Network;
 using CorpseLib.Serialize;
 using CorpseLib.Web.OAuth;
 using TwitchCorpse.EventSub;
-using TwitchCorpse.EventSub.Subscriptions;
 
 namespace TwitchCorpse
 {
