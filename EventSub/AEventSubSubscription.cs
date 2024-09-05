@@ -40,7 +40,7 @@ namespace TwitchCorpse.EventSub
             Log(string.Format("Sending: {0}", request.Request.ToString()));
             Response response = request.Send();
             if (response.StatusCode == 202)
-                Log(string.Format("<= Listening to {0}", subscriptionName));
+                Log(string.Format("<= Listening to {0}: {1}", subscriptionName, response.Body));
             else
                 Log(string.Format("<= Error when listening to {0}: {1}", subscriptionName, response.Body));
         }

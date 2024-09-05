@@ -126,27 +126,28 @@ namespace TwitchCorpse.EventSub.Subscriptions
 
         protected Text ConvertFragments(List<DataObject> fragments)
         {
-            Text chatMessage = new();
+            Text chatMessage = [];
             foreach (DataObject fragment in fragments)
             {
                 if (fragment.TryGet("type", out string? type) &&
                     fragment.TryGet("text", out string? text))
                 {
+                    string decodedText = System.Text.RegularExpressions.Regex.Unescape(text!);
                     switch (type!)
                     {
                         case "text":
                         {
-                            chatMessage.AddText(text!);
+                            chatMessage.AddText(decodedText);
                             break;
                         }
                         case "cheermote":
                         {
-                            AddCheermoteToMessage(chatMessage, fragment, text!);
+                            AddCheermoteToMessage(chatMessage, fragment, decodedText);
                             break;
                         }
                         case "emote":
                         {
-                            AddEmoteToMessage(chatMessage, fragment, text!);
+                            AddEmoteToMessage(chatMessage, fragment, decodedText);
                             break;
                         }
                         case "mention":

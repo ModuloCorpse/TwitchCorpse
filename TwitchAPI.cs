@@ -20,12 +20,14 @@ namespace TwitchCorpse
 
         private readonly Dictionary<string, TwitchBadgeSet> m_BadgeSets = [];
         private readonly Dictionary<string, TwitchEmoteSet> m_EmoteSet = [];
+        private readonly Authenticator m_Authenticator;
         private RefreshToken? m_AccessToken = null;
         private TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
         private ITwitchHandler? m_Handler;
         private readonly string[] m_Scopes = [
             "bits:read",
             "channel:bot",
+            "channel:edit:commercial",
             "channel:manage:broadcast",
             "channel:manage:moderators",
             "channel:manage:polls",
@@ -54,36 +56,67 @@ namespace TwitchCorpse
 
         public bool IsAuthenticated => m_IsAuthenticated;
 
-        public TwitchAPI() => m_Handler = null;
-        public TwitchAPI(ITwitchHandler handler) => m_Handler = handler;
+        public TwitchAPI(string publicKey, string privateKey, int port, string pageContent)
+        {
+            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
+            m_Authenticator.SetPageContent(pageContent);
+            m_Handler = null;
+        }
+
+        public TwitchAPI(string publicKey, string privateKey, int port)
+        {
+            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
+            m_Handler = null;
+        }
+
+        public TwitchAPI(string publicKey, string privateKey, int port, string pageContent, ITwitchHandler handler)
+        {
+            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
+            m_Authenticator.SetPageContent(pageContent);
+            m_Handler = handler;
+        }
+
+        public TwitchAPI(string publicKey, string privateKey, int port, ITwitchHandler handler)
+        {
+            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
+            m_Handler = handler;
+        }
 
         public void SetHandler(ITwitchHandler handler) => m_Handler = handler;
 
-        public void Authenticate(string publicKey, string privateKey, int port) => AuthenticateWithBrowser(publicKey, privateKey, port, string.Empty, string.Empty);
-
-        public void Authenticate(string publicKey, string privateKey, int port, string pageContent) => AuthenticateWithBrowser(publicKey, privateKey, port, pageContent, string.Empty);
-
-        public void AuthenticateWithBrowser(string publicKey, string privateKey, int port, string browser) => AuthenticateWithBrowser(publicKey, privateKey, port, string.Empty, browser);
-
-        public void AuthenticateWithBrowser(string publicKey, string privateKey, int port, string pageContent, string browser)
+        public void Authenticate(RefreshToken token)
         {
-            Authenticator authenticator = new("id.twitch.tv", string.Empty, port);
-            authenticator.SetPageContent(pageContent);
-            OperationResult<RefreshToken> result = authenticator.AuthorizationCode(m_Scopes, publicKey, privateKey, browser);
-            if (result)
+            m_AccessToken = token;
+            Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/users", m_AccessToken);
+            if (response.StatusCode == 200)
             {
-                m_AccessToken = result.Result!;
-                Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/users", m_AccessToken);
-                if (response.StatusCode == 200)
+                TwitchUser? user = GetUserInfo(response.Body, TwitchUser.Type.BROADCASTER);
+                if (user != null)
                 {
-                    TwitchUser? user = GetUserInfo(response.Body, TwitchUser.Type.BROADCASTER);
-                    if (user != null)
-                    {
-                        m_SelfUserInfo = user;
-                        m_IsAuthenticated = true;
-                    }
+                    m_SelfUserInfo = user;
+                    m_IsAuthenticated = true;
                 }
             }
+        }
+
+        public void AuthenticateWithBrowser(string browser = "")
+        {
+            OperationResult<RefreshToken> result = m_Authenticator.AuthorizationCode(browser);
+            if (result)
+                Authenticate(result.Result!);
+        }
+
+        public void AuthenticateFromTokenFile(string path)
+        {
+            RefreshToken? refreshToken = m_Authenticator.LoadToken(path);
+            if (refreshToken != null)
+                Authenticate(refreshToken);
+        }
+
+        public void SaveAPIToken(string path)
+        {
+            if (m_AccessToken != null)
+                m_Authenticator.SaveToken(path, m_AccessToken);
         }
 
         public TwitchEventSub? EventSubConnection(string channelID)
@@ -553,6 +586,7 @@ namespace TwitchCorpse
 
         public string PostMessage(TwitchUser broadcaster, string message)
         {
+            //TODO maybe HTML encode the message
             return PostChatMessage(new()
             {
                 { "broadcaster_id", broadcaster.ID },
@@ -570,6 +604,14 @@ namespace TwitchCorpse
                 { "message", message },
                 { "reply_parent_message_id", replyMessageID }
             });
+        }
+
+        public bool ShoutoutUser(TwitchUser user)
+        {
+            if (m_SelfUserInfo == null)
+                return false;
+            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={0}&to_broadcaster_id={1}&moderator_id={0}", m_SelfUserInfo.ID, user.ID), m_AccessToken);
+            return response.StatusCode == 204;
         }
     }
 }

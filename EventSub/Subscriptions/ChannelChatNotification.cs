@@ -44,7 +44,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                     return;
                                 if (!sub.TryGet("duration_months", out int? cumulativeMonth) || cumulativeMonth == null)
                                     cumulativeMonth = 1;
-                                Handler?.OnChatMessage(user!, true, messageID!, string.Empty, color!, chatMessage);
+                                Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
                                 Handler?.OnSharedSub(user!, followTier, (int)cumulativeMonth!, -1, chatMessage);
                             }
                             break;
@@ -67,13 +67,13 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                         TwitchUser? gifter = null;
                                         if (gifterID != null)
                                             gifter = API.GetUserInfoFromID(gifterID!);
-                                        Handler?.OnChatMessage(user!, true, messageID!, string.Empty, color!, chatMessage);
+                                        Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
                                         Handler?.OnSharedGiftSub(gifter, user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
                                     }
                                 }
                                 else
                                 {
-                                    Handler?.OnChatMessage(user!, true, messageID!, string.Empty, color!, chatMessage);
+                                    Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
                                     Handler?.OnSharedSub(user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
                                 }
                             }
@@ -93,7 +93,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                         return;
                                     if (!subGift.TryGet("duration_months", out int? monthGifted) || monthGifted == null)
                                         monthGifted = 1;
-                                    Handler?.OnChatMessage(user!, true, messageID!, string.Empty, color!, chatMessage);
+                                    Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
                                     Handler?.OnSharedGiftSub(user!, recipient!, followTier, (int)monthGifted!, -1, chatMessage);
                                 }
                             }
@@ -105,7 +105,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                             {
                                 if (announcement.TryGet("color", out string? announcementBorderColor) && announcementBorderColor != null &&
                                     ms_Colors.TryGetValue(announcementBorderColor, out string? announcementColor))
-                                    Handler?.OnChatMessage(user!, false, messageID!, announcementColor!, color!, chatMessage);
+                                    Handler?.OnChatMessage(user!, false, messageID!, null, announcementColor!, color!, chatMessage);
                             }
                             break;
                         }
