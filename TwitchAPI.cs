@@ -116,7 +116,10 @@ namespace TwitchCorpse
         public void SaveAPIToken(string path)
         {
             if (m_AccessToken != null)
+            {
+                m_AccessToken.Refresh();
                 m_Authenticator.SaveToken(path, m_AccessToken);
+            }
         }
 
         public TwitchEventSub? EventSubConnection(string channelID)

@@ -1,5 +1,6 @@
 ﻿using CorpseLib.DataNotation;
 using CorpseLib.StructuredText;
+using TwitchCorpse.API;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
@@ -8,7 +9,8 @@ namespace TwitchCorpse.EventSub.Subscriptions
     {
         protected override void Treat(Subscription subscription, EventData data)
         {
-            if (ExtractUserInfo(data, out TwitchUser? user, out string? color))
+            if (ExtractUserInfo(data, out TwitchUser? user, out string? color) &&
+                ExtractBroadcasterInfo(data, out TwitchUser? broadcaster))
             {
                 if (data.TryGet("message_id", out string? messageID) && messageID != null &&
                     data.TryGet("message_type", out string? messageType) && messageType != null &&
@@ -19,7 +21,10 @@ namespace TwitchCorpse.EventSub.Subscriptions
                         reply.TryGet("parent_message_id", out replyID);
 
                     Text chatMessage = ConvertFragments(message.GetList<DataObject>("fragments"));
-                    Handler?.OnChatMessage(user!, (messageType == "channel_points_highlighted"), messageID, replyID, string.Empty, color!, chatMessage);
+
+                    TwitchChatMessage twitchChatMessage = new(broadcaster!, user!, chatMessage, replyID ?? string.Empty, messageID, string.Empty, color!, (messageType == "channel_points_highlighted"));
+
+                    Handler?.OnChatMessage(twitchChatMessage);
 
                     if (data.TryGet("cheer", out DataObject? cheer) && cheer != null && cheer.TryGet("bits", out int? bits))
                         Handler?.OnBits(user!, (int)bits!, chatMessage);

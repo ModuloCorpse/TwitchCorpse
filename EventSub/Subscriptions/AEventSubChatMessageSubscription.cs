@@ -132,7 +132,9 @@ namespace TwitchCorpse.EventSub.Subscriptions
                 if (fragment.TryGet("type", out string? type) &&
                     fragment.TryGet("text", out string? text))
                 {
-                    string decodedText = System.Text.RegularExpressions.Regex.Unescape(text!);
+                    //TODO improve escape characters
+                    string decodedText = text!.Replace("\\u003e", ">").Replace("\\u003c", "<");
+//                    string decodedText = System.Text.RegularExpressions.Regex.Unescape(text!);
                     switch (type!)
                     {
                         case "text":
@@ -197,6 +199,24 @@ namespace TwitchCorpse.EventSub.Subscriptions
                 user = foundUser.ChatUser(userBadges);
                 return true;
             }
+            return false;
+        }
+
+        protected bool ExtractBroadcasterInfo(EventData data, out TwitchUser? broadcaster)
+        {
+            if (data.TryGet("source_broadcaster_user_id", out string? sourceUserID))
+            {
+                if (string.IsNullOrEmpty(sourceUserID))
+                    data.TryGet("broadcaster_user_id", out sourceUserID);
+                if (string.IsNullOrEmpty(sourceUserID))
+                {
+                    broadcaster = null;
+                    return false;
+                }
+                broadcaster = m_API.GetUserInfoFromID(sourceUserID);
+                return (broadcaster != null);
+            }
+            broadcaster = null;
             return false;
         }
 

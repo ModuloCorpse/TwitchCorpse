@@ -1,4 +1,5 @@
 ﻿using CorpseLib.StructuredText;
+using TwitchCorpse.API;
 
 namespace TwitchCorpse
 {
@@ -7,7 +8,7 @@ namespace TwitchCorpse
         public void OnChatMessageRemoved(string messageID);
         public void OnChatUserRemoved(string userID);
         public void OnChatClear();
-        public void OnChatMessage(TwitchUser user, bool isHighlight, string messageId, string? replyID, string announcementColor, string messageColor, Text message);
+        public void OnChatMessage(TwitchChatMessage message);
         public void OnBits(TwitchUser user, int bits, Text message);
         public void OnChatJoined();
         public void OnUserJoinChat(TwitchUser user);
@@ -26,6 +27,9 @@ namespace TwitchCorpse
 
         public void OnMessageHeld(TwitchUser user, string messageID, Text message);
         public void OnHeldMessageTreated(string messageID);
+
+        public void OnSharedChatStart();
+        public void OnSharedChatStop();
 
         public void UnhandledEventSub(string message);
     }

@@ -24,6 +24,8 @@ namespace TwitchCorpse
             ChannelShoutoutReceive,
             ChannelSubscribe,
             ChannelSubscriptionGift,
+            SharedChatBegin,
+            SharedChatEnd,
             StreamOffline,
             StreamOnline
         }
@@ -56,6 +58,8 @@ namespace TwitchCorpse
             SubscriptionType.ChannelShoutoutReceive,
             SubscriptionType.ChannelSubscribe,
             SubscriptionType.ChannelSubscriptionGift,
+            SubscriptionType.SharedChatBegin,
+            SubscriptionType.SharedChatEnd,
             SubscriptionType.StreamOffline,
             SubscriptionType.StreamOnline];
         private readonly string m_ChannelID;

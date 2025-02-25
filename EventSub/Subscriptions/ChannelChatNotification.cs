@@ -26,7 +26,8 @@ namespace TwitchCorpse.EventSub.Subscriptions
 
         protected override void Treat(Subscription subscription, EventData data)
         {
-            if (ExtractUserInfo(data, out TwitchUser? user, out string? color))
+            if (ExtractUserInfo(data, out TwitchUser? user, out string? color) &&
+                ExtractBroadcasterInfo(data, out TwitchUser? broadcaster))
             {
                 if (data.TryGet("message_id", out string? messageID) &&
                     data.TryGet("message", out DataObject? message) &&
@@ -44,7 +45,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                     return;
                                 if (!sub.TryGet("duration_months", out int? cumulativeMonth) || cumulativeMonth == null)
                                     cumulativeMonth = 1;
-                                Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
+                                Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
                                 Handler?.OnSharedSub(user!, followTier, (int)cumulativeMonth!, -1, chatMessage);
                             }
                             break;
@@ -67,13 +68,13 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                         TwitchUser? gifter = null;
                                         if (gifterID != null)
                                             gifter = API.GetUserInfoFromID(gifterID!);
-                                        Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
+                                        Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
                                         Handler?.OnSharedGiftSub(gifter, user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
                                     }
                                 }
                                 else
                                 {
-                                    Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
+                                    Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
                                     Handler?.OnSharedSub(user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
                                 }
                             }
@@ -93,7 +94,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                         return;
                                     if (!subGift.TryGet("duration_months", out int? monthGifted) || monthGifted == null)
                                         monthGifted = 1;
-                                    Handler?.OnChatMessage(user!, true, messageID!, null, string.Empty, color!, chatMessage);
+                                    Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
                                     Handler?.OnSharedGiftSub(user!, recipient!, followTier, (int)monthGifted!, -1, chatMessage);
                                 }
                             }
@@ -105,7 +106,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                             {
                                 if (announcement.TryGet("color", out string? announcementBorderColor) && announcementBorderColor != null &&
                                     ms_Colors.TryGetValue(announcementBorderColor, out string? announcementColor))
-                                    Handler?.OnChatMessage(user!, false, messageID!, null, announcementColor!, color!, chatMessage);
+                                    Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, announcementColor!, color!, false));
                             }
                             break;
                         }
