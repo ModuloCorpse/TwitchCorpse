@@ -21,7 +21,8 @@ namespace TwitchCorpse
         private readonly Dictionary<string, TwitchBadgeSet> m_BadgeSets = [];
         private readonly Dictionary<string, TwitchEmoteSet> m_EmoteSet = [];
         private readonly Authenticator m_Authenticator;
-        private RefreshToken? m_AccessToken = null;
+        private RefreshToken? m_UserAccessToken = null;
+        private RefreshToken? m_AppAccessToken = null;
         private TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
         private ITwitchHandler? m_Handler;
         private readonly string[] m_Scopes = [
@@ -86,8 +87,8 @@ namespace TwitchCorpse
 
         public void Authenticate(RefreshToken token)
         {
-            m_AccessToken = token;
-            Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/users", m_AccessToken);
+            m_UserAccessToken = token;
+            Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/users", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 TwitchUser? user = GetUserInfo(response.Body, TwitchUser.Type.BROADCASTER);
@@ -97,6 +98,15 @@ namespace TwitchCorpse
                     m_IsAuthenticated = true;
                 }
             }
+        }
+
+        public void AppAuthenticate(TwitchAPI api) => m_AppAccessToken = api.m_AppAccessToken;
+
+        public void AppAuthenticate()
+        {
+            OperationResult<RefreshToken> result = m_Authenticator.ClientCredentials();
+            if (result)
+                m_AppAccessToken = result.Result!;
         }
 
         public void AuthenticateWithBrowser(string browser = "")
@@ -115,25 +125,25 @@ namespace TwitchCorpse
 
         public void SaveAPIToken(string path)
         {
-            if (m_AccessToken != null)
+            if (m_UserAccessToken != null)
             {
-                m_AccessToken.Refresh();
-                m_Authenticator.SaveToken(path, m_AccessToken);
+                m_UserAccessToken.Refresh();
+                m_Authenticator.SaveToken(path, m_UserAccessToken);
             }
         }
 
         public TwitchEventSub? EventSubConnection(string channelID)
         {
-            if (m_AccessToken == null)
+            if (m_UserAccessToken == null)
                 return null;
-            return new(this, channelID, m_AccessToken, m_Handler);
+            return new(this, channelID, m_UserAccessToken, m_Handler);
         }
 
         public TwitchEventSub? EventSubConnection(string channelID, SubscriptionType[] subscriptionTypes)
         {
-            if (m_AccessToken == null)
+            if (m_UserAccessToken == null)
                 return null;
-            return new(this, channelID, m_AccessToken, subscriptionTypes, m_Handler);
+            return new(this, channelID, m_UserAccessToken, subscriptionTypes, m_Handler);
         }
 
         private static Response SendComposedRequest(URLRequest request, RefreshToken? token)
@@ -239,14 +249,14 @@ namespace TwitchCorpse
         public void ResetCache()
         {
             m_BadgeSets.Clear();
-            Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/chat/badges/global", m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/chat/badges/global", m_UserAccessToken);
             if (response.StatusCode == 200)
                 LoadBadgeContent(response.Body);
-            response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/chat/badges?broadcaster_id={0}", m_SelfUserInfo.ID), m_AccessToken);
+            response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/chat/badges?broadcaster_id={0}", m_SelfUserInfo.ID), m_UserAccessToken);
             if (response.StatusCode == 200)
                 LoadBadgeContent(response.Body);
             m_EmoteSet.Clear();
-            response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/chat/emotes/global", m_AccessToken);
+            response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/chat/emotes/global", m_UserAccessToken);
             if (response.StatusCode == 200)
                 LoadEmoteSetContent("", response.Body);
         }
@@ -267,7 +277,7 @@ namespace TwitchCorpse
                     return emoteInfo;
                 return null;
             }
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/chat/emotes/set?emote_set_id={0}", emoteSetID), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/chat/emotes/set?emote_set_id={0}", emoteSetID), m_UserAccessToken);
             if (response.StatusCode == 200)
                 LoadEmoteSetContent(emoteSetID, response.Body);
             if (m_EmoteSet.TryGetValue(emoteSetID, out TwitchEmoteSet? loadedEmoteSet) &&
@@ -302,7 +312,7 @@ namespace TwitchCorpse
             bool isMod = false;
             if (m_SelfUserInfo != null)
             {
-                Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/moderation/moderators?broadcaster_id={0}&user_id={1}", m_SelfUserInfo.ID, id), m_AccessToken);
+                Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/moderation/moderators?broadcaster_id={0}&user_id={1}", m_SelfUserInfo.ID, id), m_UserAccessToken);
                 if (response.StatusCode == 200)
                 {
                     DataObject json = JsonParser.Parse(response.Body);
@@ -333,7 +343,7 @@ namespace TwitchCorpse
 
         public TwitchUser? GetUserInfoFromLogin(string login)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users?login={0}", login), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users?login={0}", login), m_UserAccessToken);
             if (response.StatusCode == 200)
                 return GetUserInfo(response.Body, null);
             return null;
@@ -341,15 +351,16 @@ namespace TwitchCorpse
 
         public TwitchUser? GetUserInfoFromID(string id)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users?id={0}", id), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users?id={0}", id), m_UserAccessToken);
             if (response.StatusCode == 200)
                 return GetUserInfo(response.Body, null);
             return null;
         }
 
+        public TwitchChannelInfo? GetChannelInfo() => GetChannelInfo(m_SelfUserInfo);
         public TwitchChannelInfo? GetChannelInfo(TwitchUser user)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -378,14 +389,14 @@ namespace TwitchCorpse
                 body.Add("game_id", gameID);
             if (!string.IsNullOrEmpty(language))
                 body.Add("broadcaster_language", language);
-            Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), body, m_AccessToken);
+            Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), body, m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
         public List<TwitchUser> GetChannelFollowedByID(TwitchUser user)
         {
             List<TwitchUser> ret = [];
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users/follows?from_id={0}", user.ID), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users/follows?from_id={0}", user.ID), m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -403,7 +414,7 @@ namespace TwitchCorpse
         public List<TwitchCategoryInfo> SearchCategoryInfo(string query)
         {
             List<TwitchCategoryInfo> ret = [];
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(query)), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(query)), m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -420,7 +431,7 @@ namespace TwitchCorpse
 
         public TwitchCategoryInfo? GetCategoryInfo(string categoryID, string categoryName)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(categoryName)), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(categoryName)), m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -445,7 +456,7 @@ namespace TwitchCorpse
                 { "msg_id", messageID },
                 { "action", (allow) ? "ALLOW" : "DENY" }
             };
-            Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/moderation/automod/message", json, m_AccessToken);
+            Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/moderation/automod/message", json, m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
@@ -464,7 +475,7 @@ namespace TwitchCorpse
             {
                 { "data", data }
             };
-            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={0}", m_SelfUserInfo.ID), json, m_AccessToken);
+            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={0}", m_SelfUserInfo.ID), json, m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
@@ -472,13 +483,13 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={1}&user_id={2}", m_SelfUserInfo.ID, moderatorID, userID), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={1}&user_id={2}", m_SelfUserInfo.ID, moderatorID, userID), m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
         public TwitchStreamInfo? GetStreamInfoByID(TwitchUser user)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/streams?user_id={0}", user.ID), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/streams?user_id={0}", user.ID), m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -510,7 +521,7 @@ namespace TwitchCorpse
                 { "broadcaster_id", m_SelfUserInfo.ID },
                 { "length", duration }
             };
-            Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/channels/commercial", json, m_AccessToken);
+            Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/channels/commercial", json, m_UserAccessToken);
             return response.StatusCode == 200;
         }
 
@@ -541,7 +552,7 @@ namespace TwitchCorpse
         public TwitchCheermote[] GetTwitchCheermotes()
         {
             List<TwitchCheermote> ret = [];
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/bits/cheermotes?broadcaster_id={0}", m_SelfUserInfo.ID), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/bits/cheermotes?broadcaster_id={0}", m_SelfUserInfo.ID), m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -571,9 +582,18 @@ namespace TwitchCorpse
             return [.. ret];
         }
 
-        private string PostChatMessage(DataObject chatMessage)
+        private string PostChatMessage(DataObject chatMessage, bool forSourceOnly)
         {
-            Response response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/chat/messages", chatMessage, m_AccessToken);
+            Response response;
+            if (m_AppAccessToken != null)
+            {
+                chatMessage.Add("for_source_only", forSourceOnly);
+                response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/chat/messages", chatMessage, m_AppAccessToken);
+            }
+            else
+            {
+                response = SendRequest(Request.MethodType.POST, "https://api.twitch.tv/helix/chat/messages", chatMessage, m_UserAccessToken);
+            }
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -587,7 +607,7 @@ namespace TwitchCorpse
             return string.Empty;
         }
 
-        public string PostMessage(TwitchUser broadcaster, string message)
+        public string PostMessage(TwitchUser broadcaster, string message, bool forSourceOnly = true)
         {
             //TODO maybe HTML encode the message
             return PostChatMessage(new()
@@ -595,10 +615,10 @@ namespace TwitchCorpse
                 { "broadcaster_id", broadcaster.ID },
                 { "sender_id", m_SelfUserInfo.ID },
                 { "message", message }
-            });
+            }, forSourceOnly);
         }
 
-        public string ReplyMessage(TwitchUser broadcaster, string message, string replyMessageID)
+        public string ReplyMessage(TwitchUser broadcaster, string message, string replyMessageID, bool forSourceOnly = true)
         {
             return PostChatMessage(new()
             {
@@ -606,14 +626,14 @@ namespace TwitchCorpse
                 { "sender_id", m_SelfUserInfo.ID },
                 { "message", message },
                 { "reply_parent_message_id", replyMessageID }
-            });
+            }, forSourceOnly);
         }
 
         public bool ShoutoutUser(TwitchUser user)
         {
             if (m_SelfUserInfo == null)
                 return false;
-            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={0}&to_broadcaster_id={1}&moderator_id={0}", m_SelfUserInfo.ID, user.ID), m_AccessToken);
+            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={0}&to_broadcaster_id={1}&moderator_id={0}", m_SelfUserInfo.ID, user.ID), m_UserAccessToken);
             return response.StatusCode == 204;
         }
     }
