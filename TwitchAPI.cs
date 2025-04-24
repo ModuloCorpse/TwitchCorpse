@@ -1,5 +1,6 @@
 ﻿using CorpseLib;
 using CorpseLib.DataNotation;
+using CorpseLib.Encryption;
 using CorpseLib.Json;
 using CorpseLib.Logging;
 using CorpseLib.Network;
@@ -116,11 +117,37 @@ namespace TwitchCorpse
                 Authenticate(result.Result!);
         }
 
+        public void AuthenticateFromVault(LocalVault vault, string key)
+        {
+            RefreshToken? refreshToken = m_Authenticator.LoadToken(vault, key);
+            if (refreshToken != null)
+            {
+                Authenticate(refreshToken);
+                if (m_IsAuthenticated && m_UserAccessToken != null)
+                {
+                    m_UserAccessToken.Refreshed += (token) =>
+                    {
+                        if (token is RefreshToken refreshedToken)
+                            m_Authenticator.StoreToken(vault, key, refreshedToken);
+                    };
+                }
+            }
+        }
+
         public void AuthenticateFromTokenFile(string path)
         {
             RefreshToken? refreshToken = m_Authenticator.LoadToken(path);
             if (refreshToken != null)
                 Authenticate(refreshToken);
+        }
+
+        public void SaveAPIToken(LocalVault vault, string key)
+        {
+            if (m_UserAccessToken != null)
+            {
+                m_UserAccessToken.Refresh();
+                m_Authenticator.StoreToken(vault, key, m_UserAccessToken);
+            }
         }
 
         public void SaveAPIToken(string path)
@@ -634,6 +661,14 @@ namespace TwitchCorpse
             if (m_SelfUserInfo == null)
                 return false;
             Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={0}&to_broadcaster_id={1}&moderator_id={0}", m_SelfUserInfo.ID, user.ID), m_UserAccessToken);
+            return response.StatusCode == 204;
+        }
+
+        public bool DeleteMessage(string messageID)
+        {
+            if (m_SelfUserInfo == null)
+                return false;
+            Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/moderation/chat?broadcaster_id={0}&moderator_id={0}&message_id={1}", m_SelfUserInfo.ID, messageID), m_UserAccessToken);
             return response.StatusCode == 204;
         }
     }
