@@ -90,7 +90,7 @@ namespace TwitchCorpse.EventSub
         protected override void OnWSOpen(Response message)
         {
             SetReadOnly(true);
-            EVENTSUB.Log(string.Format("WS Open : {0}", message.ToString()));
+            EVENTSUB.Log("WS Open : ${0}", message);
         }
 
         protected override void OnWSClose(int status, string message)
@@ -101,7 +101,7 @@ namespace TwitchCorpse.EventSub
                 EVENTSUB.Log("WS Close (4002) : Ping pong failuere");
             }
             else
-                EVENTSUB.Log(string.Format("WS Close ({0}) : {1}", status, message));
+                EVENTSUB.Log("WS Close (${0}) : ${1}", status, message);
         }
 
         protected override void OnWSMessage(string message)

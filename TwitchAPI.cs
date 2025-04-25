@@ -177,7 +177,7 @@ namespace TwitchCorpse
         {
             if (token != null)
                 request.AddRefreshToken(token);
-            TWITCH_API.Log(string.Format("Sending: {0}", request.Request.ToString()));
+            TWITCH_API.Log("Sending: ${0}", request.Request);
             Response response = request.Send();
             if (token != null && response.StatusCode == 401)
             {
@@ -185,7 +185,7 @@ namespace TwitchCorpse
                 request.AddRefreshToken(token);
                 response = request.Send();
             }
-            TWITCH_API.Log(string.Format("Received: {0}", response.ToString()));
+            TWITCH_API.Log("Received: ${0}", response);
             return response;
         }
 

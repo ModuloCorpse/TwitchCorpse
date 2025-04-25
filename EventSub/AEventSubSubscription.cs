@@ -37,12 +37,12 @@ namespace TwitchCorpse.EventSub
             URLRequest request = new(URI.Parse("https://api.twitch.tv/helix/eventsub/subscriptions"), Request.MethodType.POST, JsonParser.NetStr(message));
             request.AddContentType(MIME.APPLICATION.JSON);
             request.AddRefreshToken(token);
-            Log(string.Format("Sending: {0}", request.Request.ToString()));
+            Log("Sending: ${0}", request.Request);
             Response response = request.Send();
             if (response.StatusCode == 202)
-                Log(string.Format("<= Listening to {0}: {1}", subscriptionName, response.Body));
+                Log("<= Listening to ${0}: ${1}", subscriptionName, response.Body);
             else
-                Log(string.Format("<= Error when listening to {0}: {1}", subscriptionName, response.Body));
+                Log("<= Error when listening to ${0}: ${1}", subscriptionName, response.Body);
         }
 
         internal void RegisterSubscription(Token token, string sessionID, string channelID)
@@ -59,6 +59,7 @@ namespace TwitchCorpse.EventSub
         internal void HandleEvent(Subscription subscription, EventData data) => Treat(subscription, data);
 
         protected static void Log(string log) => EventSubProtocol.EVENTSUB.Log(log);
+        protected static void Log(string log, params object[] args) => EventSubProtocol.EVENTSUB.Log(log, args);
 
         protected abstract DataObject GenerateSubscriptionCondition(string channelID);
         protected abstract void Treat(Subscription subscription, EventData data);
