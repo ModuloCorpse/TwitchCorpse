@@ -45,7 +45,6 @@ namespace TwitchCorpse.EventSub
                     case SubscriptionType.ChannelSubscribe: AddEventSubSubscription(new ChannelSubscribe(twitchHandler)); break;
                     case SubscriptionType.ChannelSubscriptionGift: AddEventSubSubscription(new ChannelSubscriptionGift(twitchHandler)); break;
                     case SubscriptionType.ChannelRaid: AddEventSubSubscription(new ChannelRaid(twitchHandler)); break;
-                    case SubscriptionType.ChannelChannelPointsCustomRewardRedemptionAdd: AddEventSubSubscription(new ChannelChannelPointsCustomRewardRedemptionAdd(twitchHandler)); break;
                     case SubscriptionType.StreamOnline: AddEventSubSubscription(new StreamOnline(twitchHandler)); break;
                     case SubscriptionType.StreamOffline: AddEventSubSubscription(new StreamOffline(twitchHandler)); break;
                     case SubscriptionType.ChannelShoutoutCreate: AddEventSubSubscription(new ChannelShoutoutCreate(twitchHandler)); break;
@@ -59,6 +58,11 @@ namespace TwitchCorpse.EventSub
                     case SubscriptionType.AutomodMessageUpdate: AddEventSubSubscription(new AutomodMessageUpdate(twitchHandler)); break;
                     case SubscriptionType.SharedChatBegin: AddEventSubSubscription(new SharedChatBegin(twitchHandler)); break;
                     case SubscriptionType.SharedChatEnd: AddEventSubSubscription(new SharedChatEnd(twitchHandler)); break;
+                    case SubscriptionType.ChannelPointsCustomRewardRedemptionAdd: AddEventSubSubscription(new ChannelPointsCustomRewardRedemptionAdd(twitchHandler)); break;
+                    case SubscriptionType.ChannelPointsCustomRewardAdd: AddEventSubSubscription(new ChannelPointsCustomRewardAdd(twitchHandler)); break;
+                    case SubscriptionType.ChannelPointsCustomRewardRemove: AddEventSubSubscription(new ChannelPointsCustomRewardRemove(twitchHandler)); break;
+                    case SubscriptionType.ChannelPointsCustomRewardUpdate: AddEventSubSubscription(new ChannelPointsCustomRewardUpdate(twitchHandler)); break;
+                    case SubscriptionType.ChannelPointsAutomaticRewardRedemptionAdd: AddEventSubSubscription(new ChannelPointsAutomaticRewardRedemptionAdd(api, twitchHandler)); break;
                 }
             }
         }
@@ -171,6 +175,11 @@ namespace TwitchCorpse.EventSub
         protected override void OnDiscardException(Exception exception)
         {
             EVENTSUB.Log(exception.ToString());
+        }
+
+        protected override void OnLog(string log)
+        {
+            EVENTSUB.Log(log);
         }
     }
 }

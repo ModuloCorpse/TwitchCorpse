@@ -9,7 +9,7 @@ using CorpseLib.Web.Http;
 using CorpseLib.Web.OAuth;
 using TwitchCorpse.API;
 using static TwitchCorpse.TwitchEventSub;
-using static TwitchCorpse.TwitchImage;
+using static TwitchCorpse.API.TwitchEmoteImage;
 
 namespace TwitchCorpse
 {
@@ -218,7 +218,11 @@ namespace TwitchCorpse
                             version.TryGet("click_action", out string? clickAction) &&
                             version.TryGet("click_url", out string? clickURL))
                         {
-                            TwitchBadgeInfo badgeInfo = new(id!, url1x!, url2x!, url4x!, title!, description!, clickAction!, clickURL ?? string.Empty);
+                            TwitchImage badgeImage = new();
+                            badgeImage[1] = url1x!;
+                            badgeImage[2] = url2x!;
+                            badgeImage[4] = url4x!;
+                            TwitchBadgeInfo badgeInfo = new(id!, badgeImage, title!, description!, clickAction!, clickURL ?? string.Empty);
                             if (!m_BadgeSets.ContainsKey(setID!))
                                 m_BadgeSets[setID!] = [];
                             m_BadgeSets[setID!].Add(badgeInfo);
@@ -246,7 +250,7 @@ namespace TwitchCorpse
                         data.TryGet("emote_type", out string? emoteType) &&
                         formats.Count != 0 && scales.Count != 0 && themeModes.Count != 0)
                     {
-                        TwitchImage image = new(name!);
+                        TwitchEmoteImage image = new(name!);
                         foreach (string themeStr in themeModes)
                         {
                             Theme theme = (themeStr == "dark") ? image[Theme.Type.DARK] : image[Theme.Type.LIGHT];
@@ -567,7 +571,7 @@ namespace TwitchCorpse
                 format[4] = url4x!;
         }
 
-        public static void LoadCheermoteTheme(DataObject obj, TwitchImage image, Theme.Type themeType)
+        public static void LoadCheermoteTheme(DataObject obj, TwitchEmoteImage image, Theme.Type themeType)
         {
             Theme theme = image[themeType];
             if (obj.TryGet("animated", out DataObject? animated))
@@ -594,11 +598,11 @@ namespace TwitchCorpse
                                 tier.TryGet("can_cheer", out bool? canCheer) &&
                                 tier.TryGet("images", out DataObject? images))
                             {
-                                TwitchImage image = new(string.Format("{0}{1}", prefix!, threshold));
+                                TwitchEmoteImage image = new(string.Format("{0}{1}", prefix!, threshold));
                                 if (images!.TryGet("dark", out DataObject? dark))
-                                    LoadCheermoteTheme(dark!, image, TwitchImage.Theme.Type.DARK);
+                                    LoadCheermoteTheme(dark!, image, Theme.Type.DARK);
                                 if (images!.TryGet("light", out DataObject? light))
-                                    LoadCheermoteTheme(light!, image, TwitchImage.Theme.Type.LIGHT);
+                                    LoadCheermoteTheme(light!, image, Theme.Type.LIGHT);
                                 twitchCheermote.AddTier(new(image, (int)threshold!, (bool)canCheer!));
                             }
                         }
@@ -670,6 +674,241 @@ namespace TwitchCorpse
                 return false;
             Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/moderation/chat?broadcaster_id={0}&moderator_id={0}&message_id={1}", m_SelfUserInfo.ID, messageID), m_UserAccessToken);
             return response.StatusCode == 204;
+        }
+
+        private static bool LoadTwitchImage(DataObject reader, out TwitchImage? image)
+        {
+            if (reader.TryGet("url_1x", out string? url1x) &&
+                reader.TryGet("url_2x", out string? url2x) &&
+                reader.TryGet("url_4x", out string? url4x))
+            {
+                image = new();
+                image[1] = url1x!;
+                image[2] = url2x!;
+                image[4] = url4x!;
+                return true;
+            }
+            image = null;
+            return false;
+        }
+
+        private static TwitchRewardInfo? LoadTwitchRemoteInfo(DataObject reader)
+        {
+            TwitchImage? image = null;
+            if (reader.TryGet("image", out DataObject? imageObject))
+                LoadTwitchImage(imageObject!, out image);
+            DateTime? cooldownExpiresAt = null;
+            if (reader.TryGet("cooldown_expires_at", out string? cooldownExpiresAtStr))
+            {
+                if (DateTime.TryParse(cooldownExpiresAtStr, out DateTime cooldownDateTime))
+                    cooldownExpiresAt = cooldownDateTime;
+            }
+
+            int globalCooldownSeconds = -1;
+            if (reader.TryGet("global_cooldown_setting", out DataObject? globalCooldownSettingObject))
+            {
+                if (globalCooldownSettingObject!.TryGet("is_enabled", out bool isGlobalCooldownEnabled) && isGlobalCooldownEnabled && globalCooldownSettingObject.TryGet("global_cooldown_seconds", out int globalCooldownSecondsValue))
+                    globalCooldownSeconds = globalCooldownSecondsValue;
+            }
+            else if (reader.TryGet("global_cooldown", out DataObject? globalCooldownObject))
+            {
+                if (globalCooldownObject!.TryGet("is_enabled", out bool isGlobalCooldownEnabled) && isGlobalCooldownEnabled && globalCooldownObject.TryGet("seconds", out int globalCooldownSecondsValue))
+                    globalCooldownSeconds = globalCooldownSecondsValue;
+            }
+
+            int maxPerStream = -1;
+            if (reader.TryGet("max_per_stream_setting", out DataObject? maxPerStreamSettingObject))
+            {
+                if (maxPerStreamSettingObject!.TryGet("is_enabled", out bool isMaxPerStreamEnabled) && isMaxPerStreamEnabled && maxPerStreamSettingObject.TryGet("max_per_stream", out int maxPerStreamValue))
+                    maxPerStream = maxPerStreamValue;
+            }
+            else if (reader.TryGet("max_per_stream", out DataObject? maxPerStreamObject))
+            {
+                if (maxPerStreamObject!.TryGet("is_enabled", out bool isMaxPerStreamEnabled) && isMaxPerStreamEnabled && maxPerStreamObject.TryGet("value", out int maxPerStreamValue))
+                    maxPerStream = maxPerStreamValue;
+            }
+
+            int maxPerUserPerStream = -1;
+            if (reader.TryGet("max_per_user_per_stream_setting", out DataObject? maxPerUserPerStreamSettingObject))
+            {
+                if (maxPerUserPerStreamSettingObject!.TryGet("is_enabled", out bool isMaxPerUserPerStreamEnabled) && isMaxPerUserPerStreamEnabled && maxPerUserPerStreamSettingObject.TryGet("max_per_user_per_stream", out int maxPerUserPerStreamValue))
+                    maxPerUserPerStream = maxPerUserPerStreamValue;
+            }
+            else if (reader.TryGet("max_per_user_per_stream", out DataObject? maxPerUserPerStreamObject))
+            {
+                if (maxPerUserPerStreamObject!.TryGet("is_enabled", out bool isMaxPerUserPerStreamEnabled) && isMaxPerUserPerStreamEnabled && maxPerUserPerStreamObject.TryGet("value", out int maxPerUserPerStreamValue))
+                    maxPerUserPerStream = maxPerUserPerStreamValue;
+            }
+
+            reader.TryGet("redemptions_redeemed_current_stream", out int? redemptionsRedeemedCurrentStream);
+            if (reader.TryGet("default_image", out DataObject? defaultImageObject) &&
+                LoadTwitchImage(defaultImageObject!, out TwitchImage? defaultImage) &&
+                reader.TryGet("id", out string? id) &&
+                reader.TryGet("title", out string? title) &&
+                reader.TryGet("prompt", out string? prompt) &&
+                reader.TryGet("background_color", out string? backgroundColor) &&
+                reader.TryGet("cost", out int cost) &&
+                reader.TryGet("is_user_input_required", out bool isUserInputRequired) &&
+                reader.TryGet("is_enabled", out bool isEnabled) &&
+                reader.TryGet("is_paused", out bool isPaused) &&
+                reader.TryGet("is_in_stock", out bool isInStock) &&
+                reader.TryGet("should_redemptions_skip_request_queue", out bool shouldRedemptionsSkipRequestQueue))
+            {
+                return new(defaultImage!,
+                    image,
+                    cooldownExpiresAt,
+                    id!,
+                    title!,
+                    prompt!,
+                    backgroundColor!,
+                    globalCooldownSeconds,
+                    maxPerStream,
+                    maxPerUserPerStream,
+                    cost,
+                    redemptionsRedeemedCurrentStream ?? 0,
+                    isUserInputRequired,
+                    isEnabled,
+                    isPaused,
+                    isInStock,
+                    shouldRedemptionsSkipRequestQueue);
+            }
+            return null;
+        }
+
+        public List<TwitchRewardInfo> GetChannelRewards()
+        {
+            if (m_SelfUserInfo == null)
+                return [];
+            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}", m_SelfUserInfo.ID), m_UserAccessToken);
+            if (response.StatusCode == 200)
+            {
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                List<DataObject> datas = responseJson.GetList<DataObject>("data");
+                List<TwitchRewardInfo> rewards = [];
+                foreach (DataObject data in datas)
+                {
+                    TwitchRewardInfo? reward = LoadTwitchRemoteInfo(data);
+                    if (reward != null)
+                        rewards.Add(reward);
+                }
+                return rewards;
+            }
+            return [];
+        }
+
+        public bool DeleteChannelReward(string rewardID)
+        {
+            if (m_SelfUserInfo == null)
+                return false;
+            Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}&id={1}", m_SelfUserInfo.ID, rewardID), m_UserAccessToken);
+            return response.StatusCode == 204;
+        }
+
+        public TwitchRewardInfo? CreateChannelReward(TwitchNewRewardInfo newRewardInfo)
+        {
+            if (m_SelfUserInfo == null)
+                return null;
+
+            DataObject obj = new()
+            {
+                ["title"] = newRewardInfo.m_Title,
+                ["cost"] = newRewardInfo.m_Cost,
+                ["is_enabled"] = newRewardInfo.m_IsEnabled,
+                ["should_redemptions_skip_request_queue"] = newRewardInfo.m_ShouldRedemptionsSkipRequestQueue
+            };
+
+            if (newRewardInfo.m_BackgroundColor != null)
+                obj["background_color"] = newRewardInfo.m_BackgroundColor;
+
+            if (newRewardInfo.m_IsUserInputRequired)
+            {
+                obj["is_user_input_required"] = true;
+                obj["prompt"] = newRewardInfo.m_Prompt;
+            }
+
+            if (newRewardInfo.m_MaxPerStream != -1)
+            {
+                obj["is_max_per_stream_enabled"] = true;
+                obj["max_per_stream"] = newRewardInfo.m_MaxPerStream;
+            }
+
+            if (newRewardInfo.m_MaxPerUserPerStream != -1)
+            {
+                obj["is_max_per_user_per_stream_enabled"] = true;
+                obj["max_per_user_per_stream"] = newRewardInfo.m_MaxPerUserPerStream;
+            }
+
+            if (newRewardInfo.m_GlobalCooldownSeconds != -1)
+            {
+                obj["is_global_cooldown_enabled"] = true;
+                obj["global_cooldown_seconds"] = newRewardInfo.m_GlobalCooldownSeconds;
+            }
+
+            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}", m_SelfUserInfo.ID), obj, m_UserAccessToken);
+            if (response.StatusCode == 200)
+            {
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                return LoadTwitchRemoteInfo(responseJson.GetList<DataObject>("data")[0]);
+            }
+            return null;
+        }
+
+        public TwitchRewardInfo? UpdateChannelReward(string rewardID, TwitchNewRewardInfo newRewardInfo)
+        {
+            if (m_SelfUserInfo == null)
+                return null;
+
+            DataObject obj = new()
+            {
+                ["title"] = newRewardInfo.m_Title,
+                ["cost"] = newRewardInfo.m_Cost,
+                ["is_enabled"] = newRewardInfo.m_IsEnabled,
+                ["should_redemptions_skip_request_queue"] = newRewardInfo.m_ShouldRedemptionsSkipRequestQueue
+            };
+
+            if (newRewardInfo.m_BackgroundColor != null)
+                obj["background_color"] = newRewardInfo.m_BackgroundColor;
+
+            if (newRewardInfo.m_IsUserInputRequired)
+            {
+                obj["is_user_input_required"] = true;
+                obj["prompt"] = newRewardInfo.m_Prompt;
+            }
+
+            if (newRewardInfo.m_MaxPerStream != -1)
+            {
+                obj["is_max_per_stream_enabled"] = true;
+                obj["max_per_stream"] = newRewardInfo.m_MaxPerStream;
+            }
+
+            if (newRewardInfo.m_MaxPerUserPerStream != -1)
+            {
+                obj["is_max_per_user_per_stream_enabled"] = true;
+                obj["max_per_user_per_stream"] = newRewardInfo.m_MaxPerUserPerStream;
+            }
+
+            if (newRewardInfo.m_GlobalCooldownSeconds != -1)
+            {
+                obj["is_global_cooldown_enabled"] = true;
+                obj["global_cooldown_seconds"] = newRewardInfo.m_GlobalCooldownSeconds;
+            }
+
+            Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}&id={1}", m_SelfUserInfo.ID, rewardID), obj, m_UserAccessToken);
+            if (response.StatusCode == 200)
+            {
+                DataObject responseJson = JsonParser.Parse(response.Body);
+                return LoadTwitchRemoteInfo(responseJson.GetList<DataObject>("data")[0]);
+            }
+            return null;
+        }
+
+        public bool UpdateRewardRedemption(string redemptionID, string rewardID, bool fullfilled)
+        {
+            if (m_SelfUserInfo == null)
+                return false;
+            DataObject obj = new() { ["status"] = (fullfilled) ? "FULFILLED" : "CANCELED" };
+            Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions?broadcaster_id={0}&id={1}&reward_id={2}", m_SelfUserInfo.ID, redemptionID, rewardID), obj, m_UserAccessToken);
+            return (response.StatusCode == 200);
         }
     }
 }

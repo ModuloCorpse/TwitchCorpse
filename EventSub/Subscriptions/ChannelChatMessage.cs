@@ -20,12 +20,13 @@ namespace TwitchCorpse.EventSub.Subscriptions
                     if (data.TryGet("reply", out DataObject? reply) && reply != null)
                         reply.TryGet("parent_message_id", out replyID);
 
-                    Text chatMessage = ConvertFragments(message.GetList<DataObject>("fragments"));
+                    Text chatMessage = SubscriptionHelper.ConvertFragments(API, message.GetList<DataObject>("fragments"));
 
                     TwitchChatMessage twitchChatMessage = new(broadcaster!, user!, chatMessage, replyID ?? string.Empty, messageID, string.Empty, color!, (messageType == "channel_points_highlighted"));
 
                     Handler?.OnChatMessage(twitchChatMessage);
 
+                    //TODO Add bits subscription instead of this
                     if (data.TryGet("cheer", out DataObject? cheer) && cheer != null && cheer.TryGet("bits", out int? bits))
                         Handler?.OnBits(user!, (int)bits!, chatMessage);
                 }

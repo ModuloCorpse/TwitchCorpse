@@ -1,4 +1,4 @@
-﻿namespace TwitchCorpse
+﻿namespace TwitchCorpse.API
 {
     public class TwitchStreamInfo(TwitchUser user, List<string> tags, string id, string gameID, string gameName, string title, string language, string thumbnailURL, int viewerCount, bool isMature)
     {

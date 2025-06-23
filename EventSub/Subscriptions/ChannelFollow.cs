@@ -1,4 +1,5 @@
 ﻿using CorpseLib.DataNotation;
+using TwitchCorpse.API;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions

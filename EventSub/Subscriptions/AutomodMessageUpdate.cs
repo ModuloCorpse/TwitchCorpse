@@ -3,7 +3,7 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class AutomodMessageUpdate(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "automod.message.update", 1)
+    internal class AutomodMessageUpdate(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "automod.message.update", 2)
     {
         protected override DataObject GenerateSubscriptionCondition(string channelID) => new()
         {

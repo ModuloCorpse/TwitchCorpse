@@ -1,14 +1,14 @@
-﻿namespace TwitchCorpse
+﻿namespace TwitchCorpse.API
 {
     public class TwitchCheermote(string prefix)
     {
-        public class Tier(TwitchImage image, int threshold, bool canCheer) : IComparable<Tier>
+        public class Tier(TwitchEmoteImage image, int threshold, bool canCheer) : IComparable<Tier>
         {
-            private readonly TwitchImage m_Image = image;
+            private readonly TwitchEmoteImage m_Image = image;
             private readonly int m_Threshold = threshold;
             private readonly bool m_CanCheer = canCheer;
 
-            public TwitchImage Image => m_Image;
+            public TwitchEmoteImage Image => m_Image;
             public int Threshold => m_Threshold;
             public bool CanCheer => m_CanCheer;
 

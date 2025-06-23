@@ -1,4 +1,4 @@
-﻿namespace TwitchCorpse
+﻿namespace TwitchCorpse.API
 {
     public class TwitchChannelInfo(TwitchUser broadcaster, string gameID, string gameName, string title, string language)
     {

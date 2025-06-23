@@ -1,8 +1,7 @@
 ﻿using CorpseLib;
-using TwitchCorpse.API;
 using CorpseLib.DataNotation;
 
-namespace TwitchCorpse
+namespace TwitchCorpse.API
 {
     public class TwitchUser(string id, string name, string displayName, string profileImageURL, TwitchUser.Type userType, List<TwitchBadgeInfo> badges)
     {

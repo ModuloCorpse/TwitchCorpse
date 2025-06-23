@@ -1,5 +1,6 @@
 ﻿using CorpseLib.DataNotation;
 using CorpseLib.Web.OAuth;
+using TwitchCorpse.API;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions

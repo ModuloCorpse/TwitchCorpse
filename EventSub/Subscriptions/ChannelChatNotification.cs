@@ -1,5 +1,6 @@
 ﻿using CorpseLib.DataNotation;
 using CorpseLib.StructuredText;
+using TwitchCorpse.API;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
@@ -33,7 +34,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                     data.TryGet("message", out DataObject? message) &&
                     data.TryGet("notice_type", out string? noticeType))
                 {
-                    Text chatMessage = ConvertFragments(message!.GetList<DataObject>("fragments"));
+                    Text chatMessage = SubscriptionHelper.ConvertFragments(API, message!.GetList<DataObject>("fragments"));
                     switch (noticeType!)
                     {
                         case "sub":

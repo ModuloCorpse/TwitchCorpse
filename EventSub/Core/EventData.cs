@@ -1,4 +1,5 @@
 ﻿using CorpseLib.DataNotation;
+using TwitchCorpse.API;
 
 namespace TwitchCorpse.EventSub.Core
 {
@@ -19,5 +20,12 @@ namespace TwitchCorpse.EventSub.Core
 
         public bool TryGet<T>(string key, out T? ret) => m_Data.TryGet(key, out ret);
         public List<T> GetList<T>(string key) => m_Data.GetList<T>(key);
+
+        public T? Cast<T>()
+        {
+            if (DataHelper.Cast(m_Data, out T? ret))
+                return ret;
+            return default;
+        }
     }
 }
