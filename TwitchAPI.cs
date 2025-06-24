@@ -283,7 +283,7 @@ namespace TwitchCorpse
             Response response = SendRequest(Request.MethodType.GET, "https://api.twitch.tv/helix/chat/badges/global", m_UserAccessToken);
             if (response.StatusCode == 200)
                 LoadBadgeContent(response.Body);
-            response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/chat/badges?broadcaster_id={0}", m_SelfUserInfo.ID), m_UserAccessToken);
+            response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/chat/badges?broadcaster_id={m_SelfUserInfo.ID}", m_UserAccessToken);
             if (response.StatusCode == 200)
                 LoadBadgeContent(response.Body);
             m_EmoteSet.Clear();
@@ -308,7 +308,7 @@ namespace TwitchCorpse
                     return emoteInfo;
                 return null;
             }
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/chat/emotes/set?emote_set_id={0}", emoteSetID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/chat/emotes/set?emote_set_id={emoteSetID}", m_UserAccessToken);
             if (response.StatusCode == 200)
                 LoadEmoteSetContent(emoteSetID, response.Body);
             if (m_EmoteSet.TryGetValue(emoteSetID, out TwitchEmoteSet? loadedEmoteSet) &&
@@ -343,7 +343,7 @@ namespace TwitchCorpse
             bool isMod = false;
             if (m_SelfUserInfo != null)
             {
-                Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/moderation/moderators?broadcaster_id={0}&user_id={1}", m_SelfUserInfo.ID, id), m_UserAccessToken);
+                Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/moderation/moderators?broadcaster_id={m_SelfUserInfo.ID}&user_id={id}", m_UserAccessToken);
                 if (response.StatusCode == 200)
                 {
                     DataObject json = JsonParser.Parse(response.Body);
@@ -374,7 +374,7 @@ namespace TwitchCorpse
 
         public TwitchUser? GetUserInfoFromLogin(string login)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users?login={0}", login), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/users?login={login}", m_UserAccessToken);
             if (response.StatusCode == 200)
                 return GetUserInfo(response.Body, null);
             return null;
@@ -382,7 +382,7 @@ namespace TwitchCorpse
 
         public TwitchUser? GetUserInfoFromID(string id)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users?id={0}", id), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/users?id={id}", m_UserAccessToken);
             if (response.StatusCode == 200)
                 return GetUserInfo(response.Body, null);
             return null;
@@ -391,7 +391,7 @@ namespace TwitchCorpse
         public TwitchChannelInfo? GetChannelInfo() => GetChannelInfo(m_SelfUserInfo);
         public TwitchChannelInfo? GetChannelInfo(TwitchUser user)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/channels?broadcaster_id={user.ID}", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -420,14 +420,14 @@ namespace TwitchCorpse
                 body.Add("game_id", gameID);
             if (!string.IsNullOrEmpty(language))
                 body.Add("broadcaster_language", language);
-            Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channels?broadcaster_id={0}", user.ID), body, m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.PATCH, $"https://api.twitch.tv/helix/channels?broadcaster_id={user.ID}", body, m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
         public List<TwitchUser> GetChannelFollowedByID(TwitchUser user)
         {
             List<TwitchUser> ret = [];
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/users/follows?from_id={0}", user.ID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/users/follows?from_id={user.ID}", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -445,7 +445,7 @@ namespace TwitchCorpse
         public List<TwitchCategoryInfo> SearchCategoryInfo(string query)
         {
             List<TwitchCategoryInfo> ret = [];
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(query)), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/search/categories?query={URI.Encode(query)}", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -462,7 +462,7 @@ namespace TwitchCorpse
 
         public TwitchCategoryInfo? GetCategoryInfo(string categoryID, string categoryName)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/search/categories?query={0}", URI.Encode(categoryName)), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/search/categories?query={URI.Encode(categoryName)}", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -506,7 +506,7 @@ namespace TwitchCorpse
             {
                 { "data", data }
             };
-            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={0}", m_SelfUserInfo.ID), json, m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.POST, $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={m_SelfUserInfo.ID}&moderator_id={m_SelfUserInfo.ID}", json, m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
@@ -514,13 +514,13 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/moderation/bans?broadcaster_id={0}&moderator_id={1}&user_id={2}", m_SelfUserInfo.ID, moderatorID, userID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.DELETE, $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={m_SelfUserInfo.ID}&moderator_id={moderatorID}&user_id={userID}", m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
         public TwitchStreamInfo? GetStreamInfoByID(TwitchUser user)
         {
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/streams?user_id={0}", user.ID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/streams?user_id={user.ID}", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -583,7 +583,7 @@ namespace TwitchCorpse
         public TwitchCheermote[] GetTwitchCheermotes()
         {
             List<TwitchCheermote> ret = [];
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/bits/cheermotes?broadcaster_id={0}", m_SelfUserInfo.ID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/bits/cheermotes?broadcaster_id={m_SelfUserInfo.ID}", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -598,7 +598,7 @@ namespace TwitchCorpse
                                 tier.TryGet("can_cheer", out bool? canCheer) &&
                                 tier.TryGet("images", out DataObject? images))
                             {
-                                TwitchEmoteImage image = new(string.Format("{0}{1}", prefix!, threshold));
+                                TwitchEmoteImage image = new($"{prefix!}{threshold}");
                                 if (images!.TryGet("dark", out DataObject? dark))
                                     LoadCheermoteTheme(dark!, image, Theme.Type.DARK);
                                 if (images!.TryGet("light", out DataObject? light))
@@ -664,7 +664,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={0}&to_broadcaster_id={1}&moderator_id={0}", m_SelfUserInfo.ID, user.ID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.POST, $"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={m_SelfUserInfo.ID}&to_broadcaster_id={user.ID}&moderator_id={m_SelfUserInfo.ID}", m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
@@ -672,7 +672,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/moderation/chat?broadcaster_id={0}&moderator_id={0}&message_id={1}", m_SelfUserInfo.ID, messageID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.DELETE, $"https://api.twitch.tv/helix/moderation/chat?broadcaster_id={m_SelfUserInfo.ID}&moderator_id={m_SelfUserInfo.ID}&message_id={messageID}", m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
@@ -779,7 +779,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return [];
-            Response response = SendRequest(Request.MethodType.GET, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}", m_SelfUserInfo.ID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.GET, $"https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={m_SelfUserInfo.ID}", m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -800,7 +800,7 @@ namespace TwitchCorpse
         {
             if (m_SelfUserInfo == null)
                 return false;
-            Response response = SendRequest(Request.MethodType.DELETE, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}&id={1}", m_SelfUserInfo.ID, rewardID), m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.DELETE, $"https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={m_SelfUserInfo.ID}&id={rewardID}", m_UserAccessToken);
             return response.StatusCode == 204;
         }
 
@@ -844,7 +844,7 @@ namespace TwitchCorpse
                 obj["global_cooldown_seconds"] = newRewardInfo.m_GlobalCooldownSeconds;
             }
 
-            Response response = SendRequest(Request.MethodType.POST, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}", m_SelfUserInfo.ID), obj, m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.POST, $"https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={m_SelfUserInfo.ID}", obj, m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -893,7 +893,7 @@ namespace TwitchCorpse
                 obj["global_cooldown_seconds"] = newRewardInfo.m_GlobalCooldownSeconds;
             }
 
-            Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={0}&id={1}", m_SelfUserInfo.ID, rewardID), obj, m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.PATCH, $"https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={m_SelfUserInfo.ID}&id={rewardID}", obj, m_UserAccessToken);
             if (response.StatusCode == 200)
             {
                 DataObject responseJson = JsonParser.Parse(response.Body);
@@ -907,7 +907,7 @@ namespace TwitchCorpse
             if (m_SelfUserInfo == null)
                 return false;
             DataObject obj = new() { ["status"] = (fullfilled) ? "FULFILLED" : "CANCELED" };
-            Response response = SendRequest(Request.MethodType.PATCH, string.Format("https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions?broadcaster_id={0}&id={1}&reward_id={2}", m_SelfUserInfo.ID, redemptionID, rewardID), obj, m_UserAccessToken);
+            Response response = SendRequest(Request.MethodType.PATCH, $"https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions?broadcaster_id={m_SelfUserInfo.ID}&id={redemptionID}&reward_id={rewardID}", obj, m_UserAccessToken);
             return (response.StatusCode == 200);
         }
     }

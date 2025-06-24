@@ -28,7 +28,7 @@ namespace TwitchCorpse.EventSub
         private readonly string m_ChannelID;
         private TimeSpan m_KeepAliveTimeoutDuration = TimeSpan.MaxValue;
 
-        public EventSubProtocol(TreatedEventBuffer treatedEventBuffer, TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler, SubscriptionType[] subscriptionTypes) : base(new Dictionary<string, string>() { { "Authorization", string.Format("Bearer {0}", token!.AccessToken) }})
+        public EventSubProtocol(TreatedEventBuffer treatedEventBuffer, TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler, SubscriptionType[] subscriptionTypes) : base(new Dictionary<string, string>() { { "Authorization", $"Bearer {token!.AccessToken}" }})
         {
             m_TreatedEventBuffer = treatedEventBuffer;
             m_TwitchHandler = twitchHandler;

@@ -9,9 +9,9 @@ namespace TwitchCorpse.EventSub.Core
 
         public TwitchUser? GetUser(string user = "")
         {
-            if (m_Data.TryGet(string.Format("{0}user_id", user), out string? id) &&
-                m_Data.TryGet(string.Format("{0}user_login", user), out string? login) &&
-                m_Data.TryGet(string.Format("{0}user_name", user), out string? name))
+            if (m_Data.TryGet($"{user}user_id", out string? id) &&
+                m_Data.TryGet($"{user}user_login", out string? login) &&
+                m_Data.TryGet($"{user}user_name", out string? name))
                 return new(id!, login!, name!, string.Empty, TwitchUser.Type.NONE, []);
             return null;
         }

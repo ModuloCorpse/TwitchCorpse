@@ -131,7 +131,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                             {
                                 if (fragment.TryGet("mention", out DataObject? mention) &&
                                     mention!.TryGet("user_name", out string? userName))
-                                    chatMessage.AddText(string.Format("@{0}", userName));
+                                    chatMessage.AddText($"@{userName}");
                                 break;
                             }
                     }
