@@ -102,7 +102,7 @@ namespace TwitchCorpse.EventSub
             if (status == 4002)
             {
                 OnUnwantedDisconnect?.Invoke(this, EventArgs.Empty);
-                EVENTSUB.Log("WS Close (4002) : Ping pong failuere");
+                EVENTSUB.Log("WS Close (4002) : Ping pong failure : ${0}", message);
             }
             else
                 EVENTSUB.Log("WS Close (${0}) : ${1}", status, message);
