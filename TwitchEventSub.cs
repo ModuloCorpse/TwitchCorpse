@@ -92,6 +92,7 @@ namespace TwitchCorpse
         {
             EventSubProtocol protocol = new(m_TreatedEventBuffer, m_API, m_ChannelID, m_Token, m_Handler, m_SubscriptionTypes);
             TCPAsyncClient client = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
+            client.OnUnwantedDisconnection += (_) => { protocol.OnUnwantedDisconnect?.Invoke(protocol, EventArgs.Empty); };
             if (!m_Monitor.IsEmpty())
                 protocol.AddMonitor(m_Monitor);
             client.Start();
