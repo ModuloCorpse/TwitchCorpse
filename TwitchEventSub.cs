@@ -42,7 +42,7 @@ namespace TwitchCorpse
         private readonly TreatedEventBuffer m_TreatedEventBuffer = new(10);
         public EventHandler? OnWelcome;
         private readonly TwitchAPI m_API;
-        private IMonitor? m_Monitor = null;
+        private readonly MonitorBatch m_Monitor = [];
         private readonly ITwitchHandler? m_Handler;
         private EventSubProtocol? m_Protocol;
         private EventSubProtocol? m_ReconnectProtocol = null;
@@ -92,8 +92,8 @@ namespace TwitchCorpse
         {
             EventSubProtocol protocol = new(m_TreatedEventBuffer, m_API, m_ChannelID, m_Token, m_Handler, m_SubscriptionTypes);
             TCPAsyncClient client = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
-            if (m_Monitor != null)
-                protocol.SetMonitor(m_Monitor);
+            if (!m_Monitor.IsEmpty())
+                protocol.AddMonitor(m_Monitor);
             client.Start();
             if (firstConnection)
                 protocol.OnWelcome += (object? sender, EventArgs e) => OnWelcome?.Invoke(sender, e);
@@ -122,11 +122,11 @@ namespace TwitchCorpse
             m_ReconnectProtocol!.OnWelcome -= HandleReconnectWelcome;
         }
 
-        public void SetMonitor(IMonitor monitor)
+        public void AddMonitor(IMonitor monitor)
         {
-            m_Monitor = monitor;
-            m_Protocol?.SetMonitor(monitor);
-            m_ReconnectProtocol?.SetMonitor(monitor);
+            m_Monitor.Add(monitor);
+            m_Protocol?.AddMonitor(monitor);
+            m_ReconnectProtocol?.AddMonitor(monitor);
         }
 
         public void Disconnect()
