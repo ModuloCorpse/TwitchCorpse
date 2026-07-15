@@ -3,7 +3,7 @@ using TwitchCorpse.API;
 
 namespace TwitchCorpse.EventSub.Core
 {
-    internal class EventData(DataObject data)
+    public class EventData(DataObject data)
     {
         private readonly DataObject m_Data = data;
 

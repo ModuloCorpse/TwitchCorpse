@@ -3,7 +3,7 @@ using CorpseLib.Json;
 
 namespace TwitchCorpse.EventSub.Core
 {
-    internal class Subscription
+    public class Subscription
     {
         private readonly Dictionary<string, string> m_Conditions = [];
         private readonly Transport m_Transport;

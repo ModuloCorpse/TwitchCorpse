@@ -1,15 +1,17 @@
-﻿using CorpseLib.DataNotation;
+﻿using CorpseLib;
+using CorpseLib.DataNotation;
 using CorpseLib.Json;
+using CorpseLib.Logging;
 using CorpseLib.Network;
-using CorpseLib.Web;
-using CorpseLib.Web.Http;
-using CorpseLib.Web.OAuth;
+using CorpseLib.Network.Http;
+using CorpseLib.Network.OAuth;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub
 {
-    internal abstract class AEventSubSubscription(ITwitchHandler? twitchHandler, string subscriptionName, int subscriptionVersion)
+    public abstract class AEventSubSubscription(ITwitchHandler? twitchHandler, string subscriptionName, int subscriptionVersion)
     {
+        public static readonly Logger HTTP_DEBBUG_LOGGER = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}", true);
         private readonly ITwitchHandler? m_TwitchHandler = twitchHandler;
         private readonly string m_SubscriptionName = subscriptionName;
         private string m_ChannelID = string.Empty;

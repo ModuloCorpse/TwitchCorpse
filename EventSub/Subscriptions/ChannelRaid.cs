@@ -1,5 +1,5 @@
 ﻿using CorpseLib.DataNotation;
-using CorpseLib.Web.OAuth;
+using CorpseLib.Network.OAuth;
 using TwitchCorpse.API;
 using TwitchCorpse.EventSub.Core;
 

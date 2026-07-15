@@ -1,8 +1,8 @@
-﻿using CorpseLib.Logging;
-using CorpseLib.Network;
-using CorpseLib.Serialize;
-using CorpseLib.Web.OAuth;
+﻿using CorpseLib;
+using CorpseLib.Logging;
+using CorpseLib.Network.OAuth;
 using TwitchCorpse.EventSub;
+using CorpseLib.Network.WebSocket;
 
 namespace TwitchCorpse
 {
@@ -42,7 +42,6 @@ namespace TwitchCorpse
         private readonly TreatedEventBuffer m_TreatedEventBuffer = new(10);
         public EventHandler? OnWelcome;
         private readonly TwitchAPI m_API;
-        private readonly MonitorBatch m_Monitor = [];
         private readonly ITwitchHandler? m_Handler;
         private EventSubProtocol? m_Protocol;
         private EventSubProtocol? m_ReconnectProtocol = null;
@@ -90,16 +89,16 @@ namespace TwitchCorpse
 
         private EventSubProtocol NewProtocol(bool firstConnection)
         {
-            EventSubProtocol protocol = new(m_TreatedEventBuffer, m_API, m_ChannelID, m_Token, m_Handler, m_SubscriptionTypes);
-            TCPAsyncClient client = new(protocol, URI.Parse("wss://eventsub.wss.twitch.tv/ws"));
-            client.OnUnwantedDisconnection += (_) => { protocol.OnUnwantedDisconnect?.Invoke(protocol, EventArgs.Empty); };
-            if (!m_Monitor.IsEmpty())
-                protocol.AddMonitor(m_Monitor);
-            client.Start();
+            EventSubProtocol client = new(m_TreatedEventBuffer, m_API, m_ChannelID, m_Token, m_Handler, m_SubscriptionTypes);
+            Dictionary<string, string> headers = new()
+            {
+                {"Authorization", $"Bearer {m_Token.AccessToken}" }
+            };
+            WebSocketClient? ws = WebSocketClient.Connect(URI.Parse("wss://eventsub.wss.twitch.tv/ws"), client, headers);
             if (firstConnection)
-                protocol.OnWelcome += (object? sender, EventArgs e) => OnWelcome?.Invoke(sender, e);
-            protocol.OnReconnect += HandleClientReconnect;
-            return protocol;
+                client.OnWelcome += (object? sender, EventArgs e) => OnWelcome?.Invoke(sender, e);
+            client.OnReconnect += HandleClientReconnect;
+            return client;
         }
 
         private void HandleMainClientDisconnect(object? _, EventArgs e)
@@ -123,24 +122,10 @@ namespace TwitchCorpse
             m_ReconnectProtocol!.OnWelcome -= HandleReconnectWelcome;
         }
 
-        public void AddMonitor(IMonitor monitor)
-        {
-            m_Monitor.Add(monitor);
-            m_Protocol?.AddMonitor(monitor);
-            m_ReconnectProtocol?.AddMonitor(monitor);
-        }
-
         public void Disconnect()
         {
             m_Protocol?.Disconnect();
             m_ReconnectProtocol?.Disconnect();
         }
-
-        public URI GetURL() => m_Protocol!.GetURL();
-        public int GetID() => m_Protocol!.GetID();
-        public bool IsConnected() => m_Protocol!.IsConnected();
-        public bool IsReconnecting() => m_Protocol!.IsReconnecting();
-        public BytesWriter CreateBytesWriter() => m_Protocol!.CreateBytesWriter();
-        public void TestRead(BytesWriter bytesWriter) => m_Protocol!.TestRead(bytesWriter);
     }
 }

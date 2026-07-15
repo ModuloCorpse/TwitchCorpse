@@ -4,9 +4,8 @@ using CorpseLib.Encryption;
 using CorpseLib.Json;
 using CorpseLib.Logging;
 using CorpseLib.Network;
-using CorpseLib.Web;
-using CorpseLib.Web.Http;
-using CorpseLib.Web.OAuth;
+using CorpseLib.Network.Http;
+using CorpseLib.Network.OAuth;
 using TwitchCorpse.API;
 using static TwitchCorpse.TwitchEventSub;
 using static TwitchCorpse.API.TwitchEmoteImage;
@@ -15,7 +14,7 @@ namespace TwitchCorpse
 {
     public class TwitchAPI
     {
-        public static readonly Logger TWITCH_API = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-TwitchAPI.log") };
+        public static readonly Logger TWITCH_API = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}");
         public static void StartLogging() => TWITCH_API.Start();
         public static void StopLogging() => TWITCH_API.Stop();
 
@@ -26,7 +25,7 @@ namespace TwitchCorpse
         private RefreshToken? m_AppAccessToken = null;
         private TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
         private ITwitchHandler? m_Handler;
-        private readonly string[] m_Scopes = [
+        public static readonly string[] ms_Scopes = [
             "bits:read",
             "channel:bot",
             "channel:edit:commercial",
@@ -58,30 +57,16 @@ namespace TwitchCorpse
 
         public bool IsAuthenticated => m_IsAuthenticated;
 
-        public TwitchAPI(string publicKey, string privateKey, int port, string pageContent)
+        public TwitchAPI(Authenticator authenticator, ITwitchHandler handler)
         {
-            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
-            m_Authenticator.SetPageContent(pageContent);
-            m_Handler = null;
-        }
-
-        public TwitchAPI(string publicKey, string privateKey, int port)
-        {
-            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
-            m_Handler = null;
-        }
-
-        public TwitchAPI(string publicKey, string privateKey, int port, string pageContent, ITwitchHandler handler)
-        {
-            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
-            m_Authenticator.SetPageContent(pageContent);
+            m_Authenticator = authenticator;
             m_Handler = handler;
         }
 
-        public TwitchAPI(string publicKey, string privateKey, int port, ITwitchHandler handler)
+        public TwitchAPI(Authenticator authenticator)
         {
-            m_Authenticator = new(m_Scopes, publicKey, privateKey, "id.twitch.tv", string.Empty, port);
-            m_Handler = handler;
+            m_Authenticator = authenticator;
+            m_Handler = null;
         }
 
         public void SetHandler(ITwitchHandler handler) => m_Handler = handler;
@@ -128,7 +113,7 @@ namespace TwitchCorpse
                     m_UserAccessToken.Refreshed += (token) =>
                     {
                         if (token is RefreshToken refreshedToken)
-                            m_Authenticator.StoreToken(vault, key, refreshedToken);
+                            refreshedToken.Store(vault, key);
                     };
                 }
             }
@@ -146,7 +131,7 @@ namespace TwitchCorpse
             if (m_UserAccessToken != null)
             {
                 m_UserAccessToken.Refresh();
-                m_Authenticator.StoreToken(vault, key, m_UserAccessToken);
+                m_UserAccessToken.Store(vault, key);
             }
         }
 
@@ -181,6 +166,7 @@ namespace TwitchCorpse
             Response response = request.Send();
             if (token != null && response.StatusCode == 401)
             {
+                TWITCH_API.Log("Received: ${0}", response);
                 token.Refresh();
                 request.AddRefreshToken(token);
                 response = request.Send();

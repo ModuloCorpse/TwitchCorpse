@@ -1,9 +1,9 @@
-﻿using CorpseLib.DataNotation;
+﻿using CorpseLib;
+using CorpseLib.DataNotation;
 using CorpseLib.Json;
 using CorpseLib.Logging;
-using CorpseLib.Web;
-using CorpseLib.Web.Http;
-using CorpseLib.Web.OAuth;
+using CorpseLib.Network.OAuth;
+using CorpseLib.Network.WebSocket;
 using System.Diagnostics;
 using System.Timers;
 using TwitchCorpse.EventSub.Core;
@@ -12,9 +12,9 @@ using static TwitchCorpse.TwitchEventSub;
 
 namespace TwitchCorpse.EventSub
 {
-    internal class EventSubProtocol : WebSocketProtocol
+    public class EventSubProtocol : AWebSocketProtocol
     {
-        internal static readonly Logger EVENTSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}") { new LogInFile("./log/${y}${M}${d}${h}-EventSub.log") };
+        public static readonly Logger EVENTSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}");
 
         private readonly Stopwatch m_KeepAliveStopwatch = new();
         private readonly System.Timers.Timer m_KeepAliveTimer = new(TimeSpan.FromSeconds(1));
@@ -28,8 +28,9 @@ namespace TwitchCorpse.EventSub
         private readonly string m_ChannelID;
         private TimeSpan m_KeepAliveTimeoutDuration = TimeSpan.MaxValue;
 
-        public EventSubProtocol(TreatedEventBuffer treatedEventBuffer, TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler, SubscriptionType[] subscriptionTypes) : base(new Dictionary<string, string>() { { "Authorization", $"Bearer {token!.AccessToken}" }})
+        public EventSubProtocol(TreatedEventBuffer treatedEventBuffer, TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler, SubscriptionType[] subscriptionTypes) : base()
         {
+            SetIsReadOnly(true);
             m_TreatedEventBuffer = treatedEventBuffer;
             m_TwitchHandler = twitchHandler;
             m_Token = token;
@@ -91,13 +92,8 @@ namespace TwitchCorpse.EventSub
 
         private void AddEventSubSubscription(AEventSubSubscription subscription) => m_Subscriptions[subscription.Name] = subscription;
 
-        protected override void OnWSOpen(Response message)
-        {
-            SetReadOnly(true);
-            EVENTSUB.Log("WS Open : ${0}", message);
-        }
-
-        protected override void OnWSClose(int status, string message)
+        public override void OnOpen() { }
+        public override void OnClose(int status, string message)
         {
             if (status == 4002)
             {
@@ -106,10 +102,14 @@ namespace TwitchCorpse.EventSub
             }
             else
                 EVENTSUB.Log("WS Close (${0}) : ${1}", status, message);
+            m_KeepAliveStopwatch.Stop();
+            m_KeepAliveTimer.Stop();
+            EVENTSUB.Log("<= Disconnected");
         }
 
-        protected override void OnWSMessage(string message)
+        public override void HandleMessage(string message)
         {
+            EVENTSUB.Log($"=> {message}");
             if (string.IsNullOrEmpty(message))
                 return;
             DataObject eventMessage = JsonParser.Parse(message);
@@ -165,21 +165,9 @@ namespace TwitchCorpse.EventSub
             }
         }
 
-        protected override void OnClientDisconnected()
+        public override void OnError(Exception ex)
         {
-            m_KeepAliveStopwatch.Stop();
-            m_KeepAliveTimer.Stop();
-            EVENTSUB.Log("<= Disconnected");
-        }
-
-        protected override void OnDiscardException(Exception exception)
-        {
-            EVENTSUB.Log(exception.ToString());
-        }
-
-        protected override void OnLog(string log)
-        {
-            EVENTSUB.Log(log);
+            EVENTSUB.Log(ex.ToString());
         }
     }
 }

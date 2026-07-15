@@ -1,11 +1,5 @@
 ﻿using CorpseLib.DataNotation;
 using CorpseLib.StructuredText;
-using CorpseLib.Web.API;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TwitchCorpse.API;
 
 namespace TwitchCorpse.EventSub.Subscriptions
@@ -107,9 +101,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             {
                 if (fragment.TryGet("type", out string? type) && fragment.TryGet("text", out string? text))
                 {
-                    //TODO improve escape characters
-                    string decodedText = text!.Replace("\\u003e", ">").Replace("\\u003c", "<");
-                    //                    string decodedText = System.Text.RegularExpressions.Regex.Unescape(text!);
+                    string decodedText = Helper.DecodeUnicode(text!);
                     switch (type!)
                     {
                         case "text":
