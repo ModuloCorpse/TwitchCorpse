@@ -9,15 +9,15 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub
 {
-    public abstract class AEventSubSubscription(ITwitchHandler? twitchHandler, string subscriptionName, int subscriptionVersion)
+    public abstract class AEventSubSubscription(ITwitchHandler twitchHandler, string subscriptionName, int subscriptionVersion)
     {
         public static readonly Logger HTTP_DEBBUG_LOGGER = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}", true);
-        private readonly ITwitchHandler? m_TwitchHandler = twitchHandler;
+        private readonly ITwitchHandler m_TwitchHandler = twitchHandler;
         private readonly string m_SubscriptionName = subscriptionName;
         private string m_ChannelID = string.Empty;
         private readonly int m_SubscriptionVersion = subscriptionVersion;
 
-        protected ITwitchHandler? Handler => m_TwitchHandler;
+        protected ITwitchHandler Handler => m_TwitchHandler;
         protected string ChannelID => m_ChannelID;
         internal string Name => m_SubscriptionName;
         internal int Version => m_SubscriptionVersion;
@@ -58,12 +58,12 @@ namespace TwitchCorpse.EventSub
             RegisterEventSubSubscription(token, m_SubscriptionName, sessionID, m_SubscriptionVersion, GenerateSubscriptionCondition(channelID));
         }
 
-        internal void HandleEvent(Subscription subscription, EventData data) => Treat(subscription, data);
+        internal async Task HandleEvent(Subscription subscription, EventData data) => await Treat(subscription, data);
 
         protected static void Log(string log) => EventSubProtocol.EVENTSUB.Log(log);
         protected static void Log(string log, params object[] args) => EventSubProtocol.EVENTSUB.Log(log, args);
 
         protected abstract DataObject GenerateSubscriptionCondition(string channelID);
-        protected abstract void Treat(Subscription subscription, EventData data);
+        protected abstract Task Treat(Subscription subscription, EventData data);
     }
 }

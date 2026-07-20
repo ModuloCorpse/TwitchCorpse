@@ -5,9 +5,9 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class ChannelChatMessage(TwitchAPI api, ITwitchHandler? twitchHandler) : AEventSubChatMessageSubscription(api, twitchHandler, "channel.chat.message", 1)
+    internal class ChannelChatMessage(TwitchAPI api, ITwitchHandler twitchHandler) : AEventSubChatMessageSubscription(api, twitchHandler, "channel.chat.message", 1)
     {
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             if (ExtractUserInfo(data, out TwitchUser? user, out string? color) &&
                 ExtractBroadcasterInfo(data, out TwitchUser? broadcaster))
@@ -24,11 +24,11 @@ namespace TwitchCorpse.EventSub.Subscriptions
 
                     TwitchChatMessage twitchChatMessage = new(broadcaster!, user!, chatMessage, replyID ?? string.Empty, messageID, string.Empty, color!, (messageType == "channel_points_highlighted"));
 
-                    Handler?.OnChatMessage(twitchChatMessage);
+                    await Handler.OnChatMessage(twitchChatMessage);
 
                     //TODO Add bits subscription instead of this
                     if (data.TryGet("cheer", out DataObject? cheer) && cheer != null && cheer.TryGet("bits", out int? bits))
-                        Handler?.OnBits(user!, (int)bits!, chatMessage);
+                        await Handler.OnBits(user!, (int)bits!, chatMessage);
                 }
             }
         }

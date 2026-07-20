@@ -1,11 +1,10 @@
 ﻿using CorpseLib.DataNotation;
-using CorpseLib.StructuredText;
 using TwitchCorpse.API;
 using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal abstract class AEventSubChatMessageSubscription(TwitchAPI api, ITwitchHandler? twitchHandler, string subscriptionName, int subscriptionVersion) : AEventSubSubscription(twitchHandler, subscriptionName, subscriptionVersion)
+    internal abstract class AEventSubChatMessageSubscription(TwitchAPI api, ITwitchHandler twitchHandler, string subscriptionName, int subscriptionVersion) : AEventSubSubscription(twitchHandler, subscriptionName, subscriptionVersion)
     {
         private static readonly List<string> ms_Colors =
         [

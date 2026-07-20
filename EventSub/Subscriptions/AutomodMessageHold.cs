@@ -5,7 +5,7 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class AutomodMessageHold(TwitchAPI api, ITwitchHandler? twitchHandler) : AEventSubChatMessageSubscription(api, twitchHandler, "automod.message.hold", 2)
+    internal class AutomodMessageHold(TwitchAPI api, ITwitchHandler twitchHandler) : AEventSubChatMessageSubscription(api, twitchHandler, "automod.message.hold", 2)
     {
         protected override DataObject GenerateSubscriptionCondition(string channelID) => new()
         {
@@ -13,7 +13,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             { "moderator_user_id", channelID }
         };
 
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             if (ExtractUserInfo(data, "user_id", out TwitchUser? user, out string? color))
             {
@@ -37,7 +37,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                         ]
                     }*/
                     Text chatMessage = SubscriptionHelper.ConvertFragments(API, message!.GetList<DataObject>("fragments"));
-                    Handler?.OnMessageHeld(user!, messageID!, chatMessage);
+                    await Handler.OnMessageHeld(user!, messageID!, chatMessage);
                 }
             }
         }

@@ -5,7 +5,7 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class ChannelRaid(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.raid", 1)
+    internal class ChannelRaid(ITwitchHandler twitchHandler) : AEventSubSubscription(twitchHandler, "channel.raid", 1)
     {
         protected override DataObject GenerateSubscriptionCondition(string channelID) => [];
 
@@ -15,7 +15,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             RegisterEventSubSubscription(token, Name, sessionID, Version, new() { { "from_broadcaster_user_id", channelID } });
         }
 
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             if (data.TryGet("viewers", out int? viewers))
             {
@@ -24,9 +24,9 @@ namespace TwitchCorpse.EventSub.Subscriptions
                 if (from != null && to != null)
                 {
                     if (from.ID == ChannelID)
-                        Handler?.OnRaiding(to, (int)viewers!);
+                        await Handler.OnRaiding(to, (int)viewers!);
                     else
-                        Handler?.OnRaided(from, (int)viewers!);
+                        await Handler.OnRaided(from, (int)viewers!);
                 }
             }
         }

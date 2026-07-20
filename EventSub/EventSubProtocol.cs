@@ -17,26 +17,25 @@ namespace TwitchCorpse.EventSub
         public static readonly Logger EVENTSUB = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}");
 
         private readonly Stopwatch m_KeepAliveStopwatch = new();
-        private readonly System.Timers.Timer m_KeepAliveTimer = new(TimeSpan.FromSeconds(1));
+        private readonly RecurringAction m_KeepAliveTimer = new(TimeSpan.FromSeconds(1));
         private readonly TreatedEventBuffer m_TreatedEventBuffer;
-        internal EventHandler? OnWelcome;
-        internal EventHandler? OnReconnect;
-        internal EventHandler? OnUnwantedDisconnect;
-        private readonly ITwitchHandler? m_TwitchHandler;
+        internal AsyncEventHandler? OnWelcome;
+        internal AsyncEventHandler? OnReconnect;
+        internal AsyncEventHandler? OnUnwantedDisconnect;
+        private readonly ITwitchHandler m_TwitchHandler;
         private readonly Token m_Token;
         private readonly Dictionary<string, AEventSubSubscription> m_Subscriptions = [];
         private readonly string m_ChannelID;
         private TimeSpan m_KeepAliveTimeoutDuration = TimeSpan.MaxValue;
 
-        public EventSubProtocol(TreatedEventBuffer treatedEventBuffer, TwitchAPI api, string channelID, Token token, ITwitchHandler? twitchHandler, SubscriptionType[] subscriptionTypes) : base()
+        public EventSubProtocol(TreatedEventBuffer treatedEventBuffer, TwitchAPI api, string channelID, Token token, ITwitchHandler twitchHandler, SubscriptionType[] subscriptionTypes) : base()
         {
             SetIsReadOnly(true);
             m_TreatedEventBuffer = treatedEventBuffer;
             m_TwitchHandler = twitchHandler;
             m_Token = token;
             m_ChannelID = channelID;
-            m_KeepAliveTimer.Elapsed += UpdateKeepalive;
-            m_KeepAliveTimer.AutoReset = true;
+            m_KeepAliveTimer.OnUpdate += UpdateKeepalive;
 
             foreach (SubscriptionType subscriptionType in subscriptionTypes)
             {
@@ -60,6 +59,7 @@ namespace TwitchCorpse.EventSub
                     case SubscriptionType.SharedChatBegin: AddEventSubSubscription(new SharedChatBegin(twitchHandler)); break;
                     case SubscriptionType.SharedChatEnd: AddEventSubSubscription(new SharedChatEnd(twitchHandler)); break;
                     case SubscriptionType.ChannelPointsCustomRewardRedemptionAdd: AddEventSubSubscription(new ChannelPointsCustomRewardRedemptionAdd(twitchHandler)); break;
+                    case SubscriptionType.ChannelPointsCustomRewardRedemptionUpdate: AddEventSubSubscription(new ChannelPointsCustomRewardRedemptionUpdate(twitchHandler)); break;
                     case SubscriptionType.ChannelPointsCustomRewardAdd: AddEventSubSubscription(new ChannelPointsCustomRewardAdd(twitchHandler)); break;
                     case SubscriptionType.ChannelPointsCustomRewardRemove: AddEventSubSubscription(new ChannelPointsCustomRewardRemove(twitchHandler)); break;
                     case SubscriptionType.ChannelPointsCustomRewardUpdate: AddEventSubSubscription(new ChannelPointsCustomRewardUpdate(twitchHandler)); break;
@@ -68,11 +68,11 @@ namespace TwitchCorpse.EventSub
             }
         }
 
-        private void StartKeepAliveTimer(TimeSpan keepAliveTimeoutDuration)
+        private async Task StartKeepAliveTimer(TimeSpan keepAliveTimeoutDuration)
         {
             m_KeepAliveTimeoutDuration = keepAliveTimeoutDuration;
             m_KeepAliveStopwatch.Start();
-            m_KeepAliveTimer.Start();
+            await m_KeepAliveTimer.Start();
         }
 
         private void ResetKeepAliveTimer()
@@ -80,34 +80,34 @@ namespace TwitchCorpse.EventSub
             m_KeepAliveStopwatch.Restart();
         }
 
-        private void UpdateKeepalive(object? source, ElapsedEventArgs e)
+        private async Task UpdateKeepalive()
         {
             if (m_KeepAliveStopwatch.Elapsed >= m_KeepAliveTimeoutDuration)
             {
                 m_KeepAliveStopwatch.Stop();
-                m_KeepAliveTimer.Stop();
-                Reconnect();
+                await m_KeepAliveTimer.Stop();
+                await Reconnect();
             }
         }
 
         private void AddEventSubSubscription(AEventSubSubscription subscription) => m_Subscriptions[subscription.Name] = subscription;
 
-        public override void OnOpen() { }
-        public override void OnClose(int status, string message)
+        public override async Task OnOpen() { }
+        public override async Task OnClose(int status, string message)
         {
             if (status == 4002)
             {
-                OnUnwantedDisconnect?.Invoke(this, EventArgs.Empty);
+                await CorpseLib.Helper.CallAsyncEventHandler(OnUnwantedDisconnect);
                 EVENTSUB.Log("WS Close (4002) : Ping pong failure : ${0}", message);
             }
             else
                 EVENTSUB.Log("WS Close (${0}) : ${1}", status, message);
             m_KeepAliveStopwatch.Stop();
-            m_KeepAliveTimer.Stop();
+            await m_KeepAliveTimer.Stop();
             EVENTSUB.Log("<= Disconnected");
         }
 
-        public override void HandleMessage(string message)
+        public override async Task OnMessageReceived(string message)
         {
             EVENTSUB.Log($"=> {message}");
             if (string.IsNullOrEmpty(message))
@@ -124,12 +124,12 @@ namespace TwitchCorpse.EventSub
                         case "session_welcome":
                         {
                             if (payload!.TryGet("keepalive_timeout_seconds", out int keepaliveTimeoutSeconds))
-                                StartKeepAliveTimer(TimeSpan.FromSeconds(keepaliveTimeoutSeconds));
+                                await StartKeepAliveTimer(TimeSpan.FromSeconds(keepaliveTimeoutSeconds));
                             if (m_Token != null && payload!.TryGet("session", out DataObject? sessionObj) && sessionObj!.TryGet("id", out string? sessionID))
                             {
                                 foreach (var pair in m_Subscriptions)
                                     pair.Value.RegisterSubscription(m_Token, sessionID!, m_ChannelID);
-                                OnWelcome?.Invoke(this, EventArgs.Empty);
+                                await CorpseLib.Helper.CallAsyncEventHandler(OnWelcome);
                             }
                             break;
                         }
@@ -142,22 +142,22 @@ namespace TwitchCorpse.EventSub
                                 Subscription subscription = new(subscriptionObj!);
                                 EventData eventData = new(eventObj!);
                                 if (m_Subscriptions.TryGetValue(subscription.Type, out AEventSubSubscription? eventSubSubscription))
-                                    eventSubSubscription.HandleEvent(subscription, eventData);
+                                    await eventSubSubscription.HandleEvent(subscription, eventData);
                                 else
-                                    m_TwitchHandler?.UnhandledEventSub(message.Trim());
+                                    await m_TwitchHandler.UnhandledEventSub(message.Trim());
                             }
                             break;
                         }
                         case "session_reconnect":
                         {
-                            OnReconnect?.Invoke(this, EventArgs.Empty);
+                            await CorpseLib.Helper.CallAsyncEventHandler(OnReconnect);
                             break;
                         }
                         case "revocation":
                             break;
                         default:
                         {
-                            m_TwitchHandler?.UnhandledEventSub(message.Trim());
+                            await m_TwitchHandler.UnhandledEventSub(message.Trim());
                             break;
                         }
                     }
@@ -165,7 +165,7 @@ namespace TwitchCorpse.EventSub
             }
         }
 
-        public override void OnError(Exception ex)
+        public override async Task OnError(Exception ex)
         {
             EVENTSUB.Log(ex.ToString());
         }

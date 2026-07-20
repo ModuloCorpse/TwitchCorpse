@@ -4,14 +4,14 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class ChannelSubscribe(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.subscribe", 1)
+    internal class ChannelSubscribe(ITwitchHandler twitchHandler) : AEventSubSubscription(twitchHandler, "channel.subscribe", 1)
     {
         protected override DataObject GenerateSubscriptionCondition(string channelID) => new()
         {
             { "broadcaster_user_id", channelID }
         };
 
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             int followTier;
             TwitchUser? follower = data.GetUser();
@@ -25,7 +25,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                     case "3000": followTier = 3; break;
                     default: return;
                 }
-                Handler?.OnSub(follower, followTier, isGift);
+                await Handler.OnSub(follower, followTier, isGift);
             }
         }
     }

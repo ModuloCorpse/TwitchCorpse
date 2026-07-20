@@ -12,7 +12,7 @@ using static TwitchCorpse.API.TwitchEmoteImage;
 
 namespace TwitchCorpse
 {
-    public class TwitchAPI
+    public class TwitchAPI(Authenticator authenticator, ITwitchHandler handler)
     {
         public static readonly Logger TWITCH_API = new("[${d}-${M}-${y} ${h}:${m}:${s}.${ms}] ${log}");
         public static void StartLogging() => TWITCH_API.Start();
@@ -20,11 +20,11 @@ namespace TwitchCorpse
 
         private readonly Dictionary<string, TwitchBadgeSet> m_BadgeSets = [];
         private readonly Dictionary<string, TwitchEmoteSet> m_EmoteSet = [];
-        private readonly Authenticator m_Authenticator;
+        private readonly Authenticator m_Authenticator = authenticator;
         private RefreshToken? m_UserAccessToken = null;
         private RefreshToken? m_AppAccessToken = null;
         private TwitchUser m_SelfUserInfo = new(TwitchUser.Type.BROADCASTER);
-        private ITwitchHandler? m_Handler;
+        private ITwitchHandler m_Handler = handler;
         public static readonly string[] ms_Scopes = [
             "bits:read",
             "channel:bot",
@@ -56,18 +56,6 @@ namespace TwitchCorpse
         private bool m_IsAuthenticated = false;
 
         public bool IsAuthenticated => m_IsAuthenticated;
-
-        public TwitchAPI(Authenticator authenticator, ITwitchHandler handler)
-        {
-            m_Authenticator = authenticator;
-            m_Handler = handler;
-        }
-
-        public TwitchAPI(Authenticator authenticator)
-        {
-            m_Authenticator = authenticator;
-            m_Handler = null;
-        }
 
         public void SetHandler(ITwitchHandler handler) => m_Handler = handler;
 
@@ -144,18 +132,26 @@ namespace TwitchCorpse
             }
         }
 
-        public TwitchEventSub? EventSubConnection(string channelID)
+        public async Task<TwitchEventSub?> EventSubConnection(string channelID, AsyncEventHandler? onWelcome = null)
         {
             if (m_UserAccessToken == null)
                 return null;
-            return new(this, channelID, m_UserAccessToken, m_Handler);
+            TwitchEventSub eventSub = new(this, channelID, m_UserAccessToken, m_Handler);
+            if (onWelcome != null)
+                eventSub.OnWelcome += onWelcome;
+            await eventSub.InitProtocol(false);
+            return eventSub;
         }
 
-        public TwitchEventSub? EventSubConnection(string channelID, SubscriptionType[] subscriptionTypes)
+        public async Task<TwitchEventSub?> EventSubConnection(string channelID, SubscriptionType[] subscriptionTypes, AsyncEventHandler? onWelcome = null)
         {
             if (m_UserAccessToken == null)
                 return null;
-            return new(this, channelID, m_UserAccessToken, subscriptionTypes, m_Handler);
+            TwitchEventSub eventSub = new(this, channelID, m_UserAccessToken, subscriptionTypes, m_Handler);
+            if (onWelcome != null)
+                eventSub.OnWelcome += onWelcome;
+            await eventSub.InitProtocol(true);
+            return eventSub;
         }
 
         private static Response SendComposedRequest(URLRequest request, RefreshToken? token)
@@ -888,6 +884,7 @@ namespace TwitchCorpse
             return null;
         }
 
+        //TODO Check with Twitch to allow updating reward redemptions from a different app
         public bool UpdateRewardRedemption(string redemptionID, string rewardID, bool fullfilled)
         {
             if (m_SelfUserInfo == null)

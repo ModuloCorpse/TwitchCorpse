@@ -5,7 +5,7 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class ChannelChatNotification(TwitchAPI api, ITwitchHandler? twitchHandler) : AEventSubChatMessageSubscription(api, twitchHandler, "channel.chat.notification", 1)
+    internal class ChannelChatNotification(TwitchAPI api, ITwitchHandler twitchHandler) : AEventSubChatMessageSubscription(api, twitchHandler, "channel.chat.notification", 1)
     {
         private static readonly Dictionary<string, string> ms_Colors = new()
         {
@@ -25,7 +25,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
             return -1;
         }
 
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             if (ExtractUserInfo(data, out TwitchUser? user, out string? color) &&
                 ExtractBroadcasterInfo(data, out TwitchUser? broadcaster))
@@ -46,8 +46,8 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                     return;
                                 if (!sub.TryGet("duration_months", out int? cumulativeMonth) || cumulativeMonth == null)
                                     cumulativeMonth = 1;
-                                Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
-                                Handler?.OnSharedSub(user!, followTier, (int)cumulativeMonth!, -1, chatMessage);
+                                await Handler.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
+                                await Handler.OnSharedSub(user!, followTier, (int)cumulativeMonth!, -1, chatMessage);
                             }
                             break;
                         }
@@ -69,14 +69,14 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                         TwitchUser? gifter = null;
                                         if (gifterID != null)
                                             gifter = API.GetUserInfoFromID(gifterID!);
-                                        Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
-                                        Handler?.OnSharedGiftSub(gifter, user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
+                                        await Handler.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
+                                        await Handler.OnSharedGiftSub(gifter, user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
                                     }
                                 }
                                 else
                                 {
-                                    Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
-                                    Handler?.OnSharedSub(user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
+                                    await Handler.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
+                                    await Handler.OnSharedSub(user!, followTier, (int)cumulativeMonth!, (int)monthStreak!, chatMessage);
                                 }
                             }
                             break;
@@ -95,8 +95,8 @@ namespace TwitchCorpse.EventSub.Subscriptions
                                         return;
                                     if (!subGift.TryGet("duration_months", out int? monthGifted) || monthGifted == null)
                                         monthGifted = 1;
-                                    Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
-                                    Handler?.OnSharedGiftSub(user!, recipient!, followTier, (int)monthGifted!, -1, chatMessage);
+                                    await Handler.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, string.Empty, color!, true));
+                                    await Handler.OnSharedGiftSub(user!, recipient!, followTier, (int)monthGifted!, -1, chatMessage);
                                 }
                             }
                             break;
@@ -107,7 +107,7 @@ namespace TwitchCorpse.EventSub.Subscriptions
                             {
                                 if (announcement.TryGet("color", out string? announcementBorderColor) && announcementBorderColor != null &&
                                     ms_Colors.TryGetValue(announcementBorderColor, out string? announcementColor))
-                                    Handler?.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, announcementColor!, color!, false));
+                                    await Handler.OnChatMessage(new(broadcaster!, user!, chatMessage, string.Empty, messageID!, announcementColor!, color!, false));
                             }
                             break;
                         }

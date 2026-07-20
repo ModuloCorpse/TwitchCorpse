@@ -3,7 +3,7 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class AutomodMessageUpdate(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "automod.message.update", 2)
+    internal class AutomodMessageUpdate(ITwitchHandler twitchHandler) : AEventSubSubscription(twitchHandler, "automod.message.update", 2)
     {
         protected override DataObject GenerateSubscriptionCondition(string channelID) => new()
         {
@@ -11,10 +11,10 @@ namespace TwitchCorpse.EventSub.Subscriptions
             { "moderator_user_id", channelID }
         };
 
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             if (data.TryGet("message_id", out string? messageID))
-                Handler?.OnHeldMessageTreated(messageID!);
+                await Handler.OnHeldMessageTreated(messageID!);
         }
     }
 }

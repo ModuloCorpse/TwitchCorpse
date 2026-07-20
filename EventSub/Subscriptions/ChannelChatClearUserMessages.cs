@@ -3,7 +3,7 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class ChannelChatClearUserMessages(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.chat.clear_user_messages", 1)
+    internal class ChannelChatClearUserMessages(ITwitchHandler twitchHandler) : AEventSubSubscription(twitchHandler, "channel.chat.clear_user_messages", 1)
     {
         protected override DataObject GenerateSubscriptionCondition(string channelID) => new()
         {
@@ -11,10 +11,10 @@ namespace TwitchCorpse.EventSub.Subscriptions
             { "user_id", channelID }
         };
 
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             if (data.TryGet("target_user_id", out string? targetUserID))
-                Handler?.OnChatUserRemoved(targetUserID!);
+                await Handler.OnChatUserRemoved(targetUserID!);
         }
     }
 }

@@ -4,7 +4,7 @@ using TwitchCorpse.EventSub.Core;
 
 namespace TwitchCorpse.EventSub.Subscriptions
 {
-    internal class ChannelFollow(ITwitchHandler? twitchHandler) : AEventSubSubscription(twitchHandler, "channel.follow", 2)
+    internal class ChannelFollow(ITwitchHandler twitchHandler) : AEventSubSubscription(twitchHandler, "channel.follow", 2)
     {
         protected override DataObject GenerateSubscriptionCondition(string channelID) => new()
         {
@@ -12,11 +12,11 @@ namespace TwitchCorpse.EventSub.Subscriptions
             { "moderator_user_id", channelID }
         };
 
-        protected override void Treat(Subscription subscription, EventData data)
+        protected override async Task Treat(Subscription subscription, EventData data)
         {
             TwitchUser? follower = data.GetUser();
             if (follower != null)
-                Handler?.OnFollow(follower);
+                await Handler.OnFollow(follower);
         }
     }
 }
