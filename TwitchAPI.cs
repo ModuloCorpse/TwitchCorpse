@@ -34,11 +34,12 @@ namespace TwitchCorpse
             "channel:manage:polls",
             "channel:manage:redemptions",
             "channel:moderate",
+            "channel:read:ads",
             "channel:read:polls",
             "channel:read:redemptions",
             "channel:read:subscriptions",
-            "chat:read",
             "chat:edit",
+            "chat:read",
             "moderator:manage:automod",
             "moderator:manage:banned_users",
             "moderator:manage:blocked_terms",
@@ -83,9 +84,9 @@ namespace TwitchCorpse
                 m_AppAccessToken = result.Result!;
         }
 
-        public void AuthenticateWithBrowser(string browser = "")
+        public async Task AuthenticateWithBrowser(string browser = "")
         {
-            OperationResult<RefreshToken> result = m_Authenticator.AuthorizationCode(browser);
+            OperationResult<RefreshToken> result = await m_Authenticator.AuthorizationCode(browser);
             if (result)
                 Authenticate(result.Result!);
         }

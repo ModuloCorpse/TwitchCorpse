@@ -33,5 +33,6 @@ namespace TwitchCorpse
         public Task OnRewardClaimed(TwitchUser user, TwitchRewardRedemptionInfo redemption, Text input);
         public Task OnRewardRedemptionStatusChanged(string redemptionID, bool fulfilled);
         public Task UnhandledEventSub(string message);
+        public Task OnAdBreakBegin(TimeSpan duration, bool isAutomatic);
     }
 }

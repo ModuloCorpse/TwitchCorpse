@@ -39,32 +39,36 @@ namespace TwitchCorpse.EventSub
 
             foreach (SubscriptionType subscriptionType in subscriptionTypes)
             {
-                switch(subscriptionType)
+                AEventSubSubscription? subscription = subscriptionType switch
                 {
-                    case SubscriptionType.ChannelFollow: AddEventSubSubscription(new ChannelFollow(twitchHandler)); break;
-                    case SubscriptionType.ChannelSubscribe: AddEventSubSubscription(new ChannelSubscribe(twitchHandler)); break;
-                    case SubscriptionType.ChannelSubscriptionGift: AddEventSubSubscription(new ChannelSubscriptionGift(twitchHandler)); break;
-                    case SubscriptionType.ChannelRaid: AddEventSubSubscription(new ChannelRaid(twitchHandler)); break;
-                    case SubscriptionType.StreamOnline: AddEventSubSubscription(new StreamOnline(twitchHandler)); break;
-                    case SubscriptionType.StreamOffline: AddEventSubSubscription(new StreamOffline(twitchHandler)); break;
-                    case SubscriptionType.ChannelShoutoutCreate: AddEventSubSubscription(new ChannelShoutoutCreate(twitchHandler)); break;
-                    case SubscriptionType.ChannelShoutoutReceive: AddEventSubSubscription(new ChannelShoutoutReceive(twitchHandler)); break;
-                    case SubscriptionType.ChannelChatClear: AddEventSubSubscription(new ChannelChatClear(twitchHandler)); break;
-                    case SubscriptionType.ChannelChatClearUserMessages: AddEventSubSubscription(new ChannelChatClearUserMessages(twitchHandler)); break;
-                    case SubscriptionType.ChannelChatMessage: AddEventSubSubscription(new ChannelChatMessage(api, twitchHandler)); break;
-                    case SubscriptionType.ChannelChatMessageDelete: AddEventSubSubscription(new ChannelChatMessageDelete(twitchHandler)); break;
-                    case SubscriptionType.ChannelChatNotification: AddEventSubSubscription(new ChannelChatNotification(api, twitchHandler)); break;
-                    case SubscriptionType.AutomodMessageHeld: AddEventSubSubscription(new AutomodMessageHold(api, twitchHandler)); break;
-                    case SubscriptionType.AutomodMessageUpdate: AddEventSubSubscription(new AutomodMessageUpdate(twitchHandler)); break;
-                    case SubscriptionType.SharedChatBegin: AddEventSubSubscription(new SharedChatBegin(twitchHandler)); break;
-                    case SubscriptionType.SharedChatEnd: AddEventSubSubscription(new SharedChatEnd(twitchHandler)); break;
-                    case SubscriptionType.ChannelPointsCustomRewardRedemptionAdd: AddEventSubSubscription(new ChannelPointsCustomRewardRedemptionAdd(twitchHandler)); break;
-                    case SubscriptionType.ChannelPointsCustomRewardRedemptionUpdate: AddEventSubSubscription(new ChannelPointsCustomRewardRedemptionUpdate(twitchHandler)); break;
-                    case SubscriptionType.ChannelPointsCustomRewardAdd: AddEventSubSubscription(new ChannelPointsCustomRewardAdd(twitchHandler)); break;
-                    case SubscriptionType.ChannelPointsCustomRewardRemove: AddEventSubSubscription(new ChannelPointsCustomRewardRemove(twitchHandler)); break;
-                    case SubscriptionType.ChannelPointsCustomRewardUpdate: AddEventSubSubscription(new ChannelPointsCustomRewardUpdate(twitchHandler)); break;
-                    case SubscriptionType.ChannelPointsAutomaticRewardRedemptionAdd: AddEventSubSubscription(new ChannelPointsAutomaticRewardRedemptionAdd(api, twitchHandler)); break;
-                }
+                    SubscriptionType.AutomodMessageHeld => new AutomodMessageHold(api, twitchHandler),
+                    SubscriptionType.AutomodMessageUpdate => new AutomodMessageUpdate(twitchHandler),
+                    SubscriptionType.ChannelAdBreakBegin => new ChannelAdBreakBegin(twitchHandler),
+                    SubscriptionType.ChannelChatClear => new ChannelChatClear(twitchHandler),
+                    SubscriptionType.ChannelChatClearUserMessages => new ChannelChatClearUserMessages(twitchHandler),
+                    SubscriptionType.ChannelChatMessage => new ChannelChatMessage(api, twitchHandler),
+                    SubscriptionType.ChannelChatMessageDelete => new ChannelChatMessageDelete(twitchHandler),
+                    SubscriptionType.ChannelChatNotification => new ChannelChatNotification(api, twitchHandler),
+                    SubscriptionType.ChannelFollow => new ChannelFollow(twitchHandler),
+                    SubscriptionType.ChannelPointsAutomaticRewardRedemptionAdd => new ChannelPointsAutomaticRewardRedemptionAdd(api, twitchHandler),
+                    SubscriptionType.ChannelPointsCustomRewardAdd => new ChannelPointsCustomRewardAdd(twitchHandler),
+                    SubscriptionType.ChannelPointsCustomRewardRedemptionAdd => new ChannelPointsCustomRewardRedemptionAdd(twitchHandler),
+                    SubscriptionType.ChannelPointsCustomRewardRedemptionUpdate => new ChannelPointsCustomRewardRedemptionUpdate(twitchHandler),
+                    SubscriptionType.ChannelPointsCustomRewardRemove => new ChannelPointsCustomRewardRemove(twitchHandler),
+                    SubscriptionType.ChannelPointsCustomRewardUpdate => new ChannelPointsCustomRewardUpdate(twitchHandler),
+                    SubscriptionType.ChannelRaid => new ChannelRaid(twitchHandler),
+                    SubscriptionType.ChannelShoutoutCreate => new ChannelShoutoutCreate(twitchHandler),
+                    SubscriptionType.ChannelShoutoutReceive => new ChannelShoutoutReceive(twitchHandler),
+                    SubscriptionType.ChannelSubscribe => new ChannelSubscribe(twitchHandler),
+                    SubscriptionType.ChannelSubscriptionGift => new ChannelSubscriptionGift(twitchHandler),
+                    SubscriptionType.SharedChatBegin => new SharedChatBegin(twitchHandler),
+                    SubscriptionType.SharedChatEnd => new SharedChatEnd(twitchHandler),
+                    SubscriptionType.StreamOffline => new StreamOffline(twitchHandler),
+                    SubscriptionType.StreamOnline => new StreamOnline(twitchHandler),
+                    _ => null
+                };
+                if (subscription != null)
+                    AddEventSubSubscription(subscription);
             }
         }
 

@@ -2,9 +2,7 @@
 using CorpseLib.Logging;
 using CorpseLib.Network.OAuth;
 using CorpseLib.Network.WebSocket;
-using System.Reflection.Metadata;
 using TwitchCorpse.EventSub;
-using static TwitchCorpse.EventSub.EventSubProtocol;
 
 namespace TwitchCorpse
 {
@@ -14,6 +12,7 @@ namespace TwitchCorpse
         {
             AutomodMessageHeld,
             AutomodMessageUpdate,
+            ChannelAdBreakBegin,
             ChannelChatClear,
             ChannelChatClearUserMessages,
             ChannelChatMessage,
@@ -52,13 +51,19 @@ namespace TwitchCorpse
         private readonly SubscriptionType[] m_SubscriptionTypes = [
             SubscriptionType.AutomodMessageHeld,
             SubscriptionType.AutomodMessageUpdate,
-            SubscriptionType.ChannelPointsCustomRewardRedemptionAdd,
+            SubscriptionType.ChannelAdBreakBegin,
             SubscriptionType.ChannelChatClear,
             SubscriptionType.ChannelChatClearUserMessages,
             SubscriptionType.ChannelChatMessage,
             SubscriptionType.ChannelChatMessageDelete,
             SubscriptionType.ChannelChatNotification,
             SubscriptionType.ChannelFollow,
+            SubscriptionType.ChannelPointsAutomaticRewardRedemptionAdd,
+            SubscriptionType.ChannelPointsCustomRewardAdd,
+            SubscriptionType.ChannelPointsCustomRewardRedemptionAdd,
+            SubscriptionType.ChannelPointsCustomRewardRedemptionUpdate,
+            SubscriptionType.ChannelPointsCustomRewardRemove,
+            SubscriptionType.ChannelPointsCustomRewardUpdate,
             SubscriptionType.ChannelRaid,
             SubscriptionType.ChannelShoutoutCreate,
             SubscriptionType.ChannelShoutoutReceive,
@@ -67,7 +72,8 @@ namespace TwitchCorpse
             SubscriptionType.SharedChatBegin,
             SubscriptionType.SharedChatEnd,
             SubscriptionType.StreamOffline,
-            SubscriptionType.StreamOnline];
+            SubscriptionType.StreamOnline
+        ];
         private readonly string m_ChannelID;
 
         internal TwitchEventSub(TwitchAPI api, string channelID, Token token, ITwitchHandler twitchHandler)
